@@ -1,0 +1,239 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 92 24% 63%;
+    --foreground: 0 0% 10%;
+
+    --card: 348 45% 88%;
+    --card-foreground: 0 0% 10%;
+
+    --popover: 348 45% 90%;
+    --popover-foreground: 0 0% 10%;
+
+    --primary: 0 0% 8%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 92 18% 56%;
+    --secondary-foreground: 0 0% 12%;
+
+    --muted: 348 28% 82%;
+    --muted-foreground: 0 0% 38%;
+
+    --accent: 0 0% 8%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 76% 90%;
+    --destructive-foreground: 0 63% 31%;
+
+    --border: 348 22% 76%;
+    --input: 348 22% 76%;
+    --ring: 0 0% 8%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 348 45% 88%;
+    --sidebar-foreground: 0 0% 8%;
+    --sidebar-primary: 0 0% 8%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 348 28% 82%;
+    --sidebar-accent-foreground: 0 0% 12%;
+    --sidebar-border: 348 22% 76%;
+    --sidebar-ring: 0 0% 8%;
+
+    /* Custom Wardrobe tokens */
+    --warm-cream: 92 24% 63%;
+    --terracotta: 0 0% 10%;
+    --terracotta-light: 348 45% 90%;
+    --terracotta-glow: 0 0% 85%;
+    --sage: 92 18% 56%;
+    --sage-light: 92 16% 66%;
+    --warm-gold: 0 0% 8%;
+    --warm-brown: 0 0% 8%;
+    --blush: 348 45% 88%;
+    --coral: 0 0% 12%;
+    --success: 142 66% 33%;
+    --success-foreground: 0 0% 100%;
+
+    --font-display: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --font-body: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+
+    /* Shadows */
+    --shadow-soft: 0 2px 12px -6px hsl(0 0% 0% / 0.18);
+    --shadow-card: 0 6px 20px -10px hsl(0 0% 0% / 0.22);
+    --shadow-elevated: 0 12px 28px -12px hsl(0 0% 0% / 0.28);
+    --shadow-glow: 0 0 0 0 transparent;
+    --chart-1: 0 0% 12%;
+    --chart-2: 0 0% 35%;
+    --chart-3: 0 0% 55%;
+    --chart-4: 348 40% 84%;
+    --chart-5: 348 28% 76%;
+    --sidebar: 348 45% 88%;
+    --font-sans: 'Helvetica Neue', Helvetica, Arial, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
+    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
+    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
+    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+    --tracking-normal: 0em;
+    --spacing: 0.25rem;
+  }
+
+  .dark {
+    --background: 269 7% 11%;
+    --foreground: 269 29% 70%;
+    --card: 269 7% 7%;
+    --card-foreground: 269 29% 70%;
+    --popover: 269 7% 11%;
+    --popover-foreground: 269 29% 70%;
+    --primary: 269 29% 86%;
+    --primary-foreground: 269 7% 11%;
+    --secondary: 89 23% 12%;
+    --secondary-foreground: 269 29% 70%;
+    --muted: 89 18% 12%;
+    --muted-foreground: 89 23% 75%;
+    --accent: 299 34% 21%;
+    --accent-foreground: 299 74% 70%;
+    --destructive: 0 33% 20%;
+    --destructive-foreground: 0 91% 71%;
+    --border: 89 18% 12%;
+    --input: 89 13% 25%;
+    --ring: 89 23% 83%;
+    --chart-1: 269 70% 50%;
+    --chart-2: 29 75% 55%;
+    --chart-3: 299 80% 55%;
+    --chart-4: 189 65% 60%;
+    --chart-5: 69 60% 45%;
+    --sidebar: 266 4% 20.8%;
+    --sidebar-foreground: 89 53% 95%;
+    --sidebar-primary: 299 74% 55%;
+    --sidebar-primary-foreground: 269 29% 70%;
+    --sidebar-accent: 89 18% 12%;
+    --sidebar-accent-foreground: 89 53% 95%;
+    --sidebar-border: 89 18% 12%;
+    --sidebar-ring: 89 23% 83%;
+    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
+    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
+    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
+    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+    --sidebar-background: 269 7% 11%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-body);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+  }
+  .font-body {
+    font-family: var(--font-body);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 0px;
+}
+
+/* Smooth page transitions */
+.page-transition {
+  animation: fadeUp 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes heartPop {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.35); }
+  60% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+.heart-pop {
+  animation: heartPop 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 0%,
+    hsl(var(--warm-cream)) 50%,
+    hsl(var(--muted)) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Glass morphism */
+.glass {
+  background: hsl(var(--card) / 0.96);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+}
+
+/* Warm gradient backgrounds */
+.bg-warm-gradient {
+  background: hsl(var(--background));
+}
+
+.bg-primary-gradient {
+  background: hsl(var(--primary));
+}
+
+/* Shared page shell (web-first) */
+.app-shell {
+  width: 100%;
+  max-width: none;
+  min-height: 100dvh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Card hover lift */
+.card-lift {
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-elevated);
+}
