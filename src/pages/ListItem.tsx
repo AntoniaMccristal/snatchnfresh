@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { ChevronDown, Wrench } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { toast } from "@/hooks/use-toast";
@@ -11,6 +11,7 @@ import {
   validateImageFile,
 } from "@/lib/images";
 import { generateListingFromImage } from "@/lib/aiListing";
+import StripeConnectBanner from "@/components/StripeConnectBanner";
 
 const CATEGORY_OPTIONS = ["Dresses", "Tops", "Bottoms", "Outerwear", "Accessories", "Shoes", "Bags"];
 const CONDITION_OPTIONS = ["Brand new", "Like new", "Used- excellent", "Used- good", "Used - fair"];
@@ -166,7 +167,6 @@ async function insertItemWithFallback(
 const ListItem = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const [searchParams, setSearchParams] = useSearchParams();
   const isEditing = !!id;
 
   const [title, setTitle] = useState("");
@@ -185,7 +185,6 @@ const ListItem = () => {
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [stripeConnected, setStripeConnected] = useState(false);
-  const [connectingStripe, setConnectingStripe] = useState(false);
   const [isFirstListing, setIsFirstListing] = useState(false);
 
   const [serverItemLoaded, setServerItemLoaded] = useState(false);
@@ -266,33 +265,6 @@ const ListItem = () => {
 
     loadUser();
   }, [isEditing]);
-
-  useEffect(() => {
-    const stripeState = searchParams.get("stripe");
-    if (!stripeState) return;
-
-    if (stripeState === "connected") {
-      setStripeConnected(true);
-      setConnectingStripe(false);
-      toast({
-        title: "Payouts connected",
-        description: "Stripe payouts are ready. You can finish publishing your listing now.",
-      });
-    }
-
-    if (stripeState === "refresh") {
-      setConnectingStripe(false);
-      toast({
-        title: "Finish payout setup",
-        description: "Stripe setup was not completed. Connect payouts to publish your first item.",
-        variant: "destructive",
-      });
-    }
-
-    const next = new URLSearchParams(searchParams);
-    next.delete("stripe");
-    setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!isEditing) {
@@ -565,43 +537,6 @@ const ListItem = () => {
 
     setDiagnostics(checks);
     setRunningDiagnostics(false);
-  }
-
-  async function connectStripePayouts() {
-    try {
-      setConnectingStripe(true);
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      if (!token) {
-        navigate("/auth");
-        return;
-      }
-
-      const response = await fetch("/api/create-connect-onboarding-link", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          return_path: isEditing ? `/list/${id || ""}` : "/list",
-        }),
-      });
-
-      const payload = await response.json();
-      if (!response.ok || !payload?.url) {
-        throw new Error(payload?.error || "Could not open Stripe onboarding.");
-      }
-
-      window.location.assign(payload.url);
-    } catch (error: any) {
-      toast({
-        title: "Stripe setup failed",
-        description: error?.message || "Could not start Stripe onboarding.",
-        variant: "destructive",
-      });
-      setConnectingStripe(false);
-    }
   }
 
   const handleSubmit = async () => {
@@ -903,31 +838,25 @@ const ListItem = () => {
       </div>
 
       <div className="space-y-3">
-        {!isEditing && isFirstListing && !stripeConnected && !IS_STRIPE_TEST_MODE && (
-          <div className="rounded-2xl border border-border/60 bg-card p-4 space-y-3">
-            <div>
-              <p className="text-sm font-semibold text-foreground">Set up payouts before your first listing</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                To publish your first item, connect Stripe so rental payments can be split automatically and paid out to your bank account safely.
+        {!isEditing && isFirstListing && (
+          <div className="space-y-3">
+            <StripeConnectBanner
+              returnPath="/list"
+              variant="inline"
+              heading="Add your bank to get paid"
+              compactDescription={
+                IS_STRIPE_TEST_MODE
+                  ? "In Stripe test mode this step is optional, but you can connect a test payout account now to verify the full lender flow."
+                  : "Before your first listing goes live, add your bank through Stripe so Snatch'n can split rental payments and pay you out safely."
+              }
+              onConnected={() => setStripeConnected(true)}
+              onStatusChange={(nextStatus) => setStripeConnected(nextStatus.connected)}
+            />
+            {IS_STRIPE_TEST_MODE && !stripeConnected && (
+              <p className="text-xs text-muted-foreground px-1">
+                Test mode is active. You can still publish without completing bank setup, then come back later to test lender onboarding.
               </p>
-            </div>
-            <button
-              type="button"
-              onClick={connectStripePayouts}
-              disabled={connectingStripe}
-              className="h-10 px-4 rounded-xl bg-primary text-white text-sm font-semibold disabled:opacity-60"
-            >
-              {connectingStripe ? "Opening Stripe..." : "Connect payouts"}
-            </button>
-          </div>
-        )}
-
-        {!isEditing && isFirstListing && !stripeConnected && IS_STRIPE_TEST_MODE && (
-          <div className="rounded-2xl border border-border/60 bg-card p-4 space-y-2">
-            <p className="text-sm font-semibold text-foreground">Test mode active</p>
-            <p className="text-xs text-muted-foreground">
-              You can publish listings without Stripe payout setup in sandbox. Connect payouts later if you want to test lender onboarding.
-            </p>
+            )}
           </div>
         )}
 

@@ -1,26 +1,26 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
-import Index from "./pages/Index";
-import Profile from "./pages/Profile";
-import ListItem from "./pages/ListItem";
-import ItemDetail from "./pages/ItemDetail";
-import Booking from "./pages/Booking";
-import Discover from "./pages/Discover";
-import ClosetProfile from "./pages/ClosetProfile";
-import Auth from "./Auth";
-import AuthMfa from "./pages/AuthMfa";
-import PaymentSuccess from "./pages/PaymentSuccess";
-import OnboardingProfile from "./pages/OnboardingProfile";
-import Messages from "./pages/Messages";
-import Bag from "./pages/Bag";
-import About from "./pages/About";
-import Privacy from "./pages/Privacy";
-import Terms from "./pages/Terms";
-import Help from "./pages/Help";
-import Contact from "./pages/Contact";
-import Reviews from "./pages/Reviews";
-import Connections from "./pages/Connections";
-import NotFound from "./pages/NotFound";
+const Index = lazy(() => import("./pages/Index"));
+const Profile = lazy(() => import("./pages/Profile"));
+const ListItem = lazy(() => import("./pages/ListItem"));
+const ItemDetail = lazy(() => import("./pages/ItemDetail"));
+const Booking = lazy(() => import("./pages/Booking"));
+const Discover = lazy(() => import("./pages/Discover"));
+const ClosetProfile = lazy(() => import("./pages/ClosetProfile"));
+const Auth = lazy(() => import("./Auth"));
+const AuthMfa = lazy(() => import("./pages/AuthMfa"));
+const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
+const OnboardingProfile = lazy(() => import("./pages/OnboardingProfile"));
+const Messages = lazy(() => import("./pages/Messages"));
+const Bag = lazy(() => import("./pages/Bag"));
+const About = lazy(() => import("./pages/About"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Help = lazy(() => import("./pages/Help"));
+const Contact = lazy(() => import("./pages/Contact"));
+const Reviews = lazy(() => import("./pages/Reviews"));
+const Connections = lazy(() => import("./pages/Connections"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 import ProtectedRoute from "./ProtectedRoute";
 import BottomNav from "./components/BottomNav";
 import SiteFooter from "./components/SiteFooter";
@@ -35,6 +35,14 @@ function ScrollToTop() {
   }, [pathname]);
 
   return null;
+}
+
+function RouteFallback() {
+  return (
+    <div className="app-shell p-6 min-h-[40vh] flex items-center justify-center">
+      <div className="text-sm text-muted-foreground">Loading...</div>
+    </div>
+  );
 }
 
 export default function App() {
@@ -71,90 +79,92 @@ export default function App() {
     <BrowserRouter>
       <ScrollToTop />
       <div style={{ paddingBottom: "80px" }}>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/discover" element={<Discover />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/auth/mfa" element={<AuthMfa />} />
-          <Route
-            path="/messages"
-            element={
-              <ProtectedRoute requireOnboarding>
-                <Messages />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/bag"
-            element={
-              <ProtectedRoute requireOnboarding>
-                <Bag />
-              </ProtectedRoute>
-            }
-          />
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/discover" element={<Discover />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/auth/mfa" element={<AuthMfa />} />
+            <Route
+              path="/messages"
+              element={
+                <ProtectedRoute requireOnboarding>
+                  <Messages />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/bag"
+              element={
+                <ProtectedRoute requireOnboarding>
+                  <Bag />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute requireOnboarding>
-                <Profile />
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute requireOnboarding>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/list/:id?"
-            element={
-              <ProtectedRoute requireOnboarding>
-                <ListItem />
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/list/:id?"
+              element={
+                <ProtectedRoute requireOnboarding>
+                  <ListItem />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route path="/item/:id" element={<ItemDetail />} />
-          <Route path="/closet/:userId" element={<ClosetProfile />} />
-          <Route
-            path="/booking/:itemId"
-            element={
-              <ProtectedRoute requireOnboarding>
-                <Booking />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/onboarding"
-            element={
-              <ProtectedRoute>
-                <OnboardingProfile />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/payment-success" element={<PaymentSuccess />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/help" element={<Help />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/reviews" element={<Reviews />} />
-          <Route path="/reviews/:userId" element={<Reviews />} />
-          <Route
-            path="/connections"
-            element={
-              <ProtectedRoute requireOnboarding>
-                <Connections />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/connections/:userId"
-            element={
-              <ProtectedRoute requireOnboarding>
-                <Connections />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+            <Route path="/item/:id" element={<ItemDetail />} />
+            <Route path="/closet/:userId" element={<ClosetProfile />} />
+            <Route
+              path="/booking/:itemId"
+              element={
+                <ProtectedRoute requireOnboarding>
+                  <Booking />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/onboarding"
+              element={
+                <ProtectedRoute>
+                  <OnboardingProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/payment-success" element={<PaymentSuccess />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/help" element={<Help />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/reviews" element={<Reviews />} />
+            <Route path="/reviews/:userId" element={<Reviews />} />
+            <Route
+              path="/connections"
+              element={
+                <ProtectedRoute requireOnboarding>
+                  <Connections />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/connections/:userId"
+              element={
+                <ProtectedRoute requireOnboarding>
+                  <Connections />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
         <SiteFooter />
       </div>
 

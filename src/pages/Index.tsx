@@ -328,9 +328,6 @@ const Home = () => {
     loadRealNotifications();
     loadBagCount();
     window.addEventListener("snatchn:bag-updated", loadBagCount);
-    const pollId = window.setInterval(() => {
-      loadRealNotifications();
-    }, 15000);
 
     const onVisible = () => {
       if (document.visibilityState === "visible") {
@@ -352,7 +349,6 @@ const Home = () => {
 
     return () => {
       window.removeEventListener("snatchn:bag-updated", loadBagCount);
-      window.clearInterval(pollId);
       document.removeEventListener("visibilitychange", onVisible);
       supabase.removeChannel(bookingChannel);
     };

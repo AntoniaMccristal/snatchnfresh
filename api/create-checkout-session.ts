@@ -4,6 +4,8 @@ import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
+const COMMISSION_RATE = 0.05;
+
 function getAppOrigin(req: VercelRequest) {
   const explicitOrigin = String(req.headers.origin || "").trim();
   if (explicitOrigin) return explicitOrigin;
@@ -235,7 +237,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           : 0;
 
     const rentalSubtotal = rentalDays * pricePerDay;
-    const platformCommissionAmount = Math.round(rentalSubtotal * 0.1);
+    const platformCommissionAmount = Math.round(rentalSubtotal * COMMISSION_RATE);
     const insuranceAmount = insuranceSelected ? 5 : 0;
     const lenderPayoutAmount = rentalSubtotal - platformCommissionAmount + shippingAmount;
     const totalPrice = rentalSubtotal + shippingAmount + insuranceAmount;
@@ -274,7 +276,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       insurance_amount: insuranceAmount,
       platform_commission_amount: platformCommissionAmount,
       lender_payout_amount: lenderPayoutAmount,
-      commission_rate: 0.1,
+      commission_rate: COMMISSION_RATE,
       stripe_transfer_destination: stripeDestination || null,
       payout_status: "held",
       payout_hold_reason: stripeDestination

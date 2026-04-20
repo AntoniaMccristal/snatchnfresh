@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabaseClient";
 import { getItemImageUrl } from "@/lib/images";
 import { uploadAvatar } from "@/lib/avatarUpload";
 import { usePageRefresh } from "@/hooks/usePageRefresh";
+import StripeConnectBanner from "@/components/StripeConnectBanner";
 
 type ProfileSection = "wardrobe" | "snatches" | "likes";
 
@@ -67,7 +68,6 @@ export default function Profile() {
   const [showApprovedBanner, setShowApprovedBanner] = useState(true);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState("");
   const [stripeConnected, setStripeConnected] = useState(false);
-  const [connectingStripe, setConnectingStripe] = useState(false);
   const [followsEnabled, setFollowsEnabled] = useState(true);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
@@ -754,36 +754,6 @@ export default function Profile() {
     navigate("/auth", { replace: true });
   }
 
-  async function connectStripePayouts() {
-    try {
-      setConnectingStripe(true);
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      if (!token) {
-        navigate("/auth");
-        return;
-      }
-
-      const response = await fetch("/api/create-connect-onboarding-link", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const payload = await response.json();
-      if (!response.ok || !payload?.url) {
-        throw new Error(payload?.error || "Could not open Stripe onboarding.");
-      }
-
-      window.location.assign(payload.url);
-    } catch (error: any) {
-      alert(error?.message || "Could not start Stripe onboarding.");
-      setConnectingStripe(false);
-    }
-  }
-
   const approvedTripsCount = useMemo(
     () => mySnatches.filter((booking) => String(booking.status || "").toLowerCase() === "approved").length,
     [mySnatches],
@@ -1011,25 +981,15 @@ export default function Profile() {
           })}
         </div>
 
-        <section className="mb-5 rounded-2xl border border-border/60 bg-card p-3">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <div>
-              <p className="text-sm font-semibold text-foreground">Stripe payouts</p>
-              <p className="text-xs text-muted-foreground">
-                {stripeConnected ? "Connected" : "Not connected"}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={connectStripePayouts}
-              disabled={connectingStripe}
-              className="h-8 px-3 rounded-lg border border-border text-xs font-semibold disabled:opacity-60"
-            >
-              {connectingStripe ? "Opening..." : stripeConnected ? "Update" : "Connect"}
-            </button>
-          </div>
+        <section className="mb-5 space-y-3">
+          <StripeConnectBanner
+            returnPath="/profile"
+            variant="card"
+            onConnected={() => setStripeConnected(true)}
+            onStatusChange={(nextStatus) => setStripeConnected(nextStatus.connected)}
+          />
 
-          <div className="flex items-center justify-between gap-3">
+          <div className="rounded-2xl border border-border/60 bg-card p-3 flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-foreground">Two-step verification</p>
               <p className="text-xs text-muted-foreground">

@@ -5,6 +5,8 @@ import { Pencil, Search, UserRound } from "lucide-react";
 import { getItemImageUrl } from "@/lib/images";
 import { usePageRefresh } from "@/hooks/usePageRefresh";
 
+const PAGE_SIZE = 24;
+
 function getDistanceKm(item: any) {
   if (typeof item?.distance_km === "number" && Number.isFinite(item.distance_km)) {
     return item.distance_km;
@@ -40,8 +42,10 @@ export default function Discover() {
   const [priceMax, setPriceMax] = useState("");
   const [showAvailableOnly, setShowAvailableOnly] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMoreItems, setHasMoreItems] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [visibleCount, setVisibleCount] = useState(12);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const navigate = useNavigate();
 
   const loadCurrentUser = useCallback(async () => {
@@ -49,18 +53,19 @@ export default function Discover() {
     setCurrentUserId(data?.user?.id ?? null);
   }, []);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-
-    const { data: itemData, error: itemError } = await supabase
+  const fetchItemsPage = useCallback(async (from: number, to: number) => {
+    const { data, error } = await supabase
       .from("items")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
-    if (!itemError && itemData) {
-      setItems(itemData);
-    }
+    if (error) throw error;
 
+    return data ?? [];
+  }, []);
+
+  const fetchProfiles = useCallback(async (seedItems: any[]) => {
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
       .select("id,username,full_name,avatar_url")
@@ -68,26 +73,60 @@ export default function Discover() {
 
     if (!profileError && profileData) {
       setProfiles(profileData);
-    } else {
-      // fallback: construct lightweight user list from items owners
-      const owners = new Map<string, any>();
-      (itemData || []).forEach((item) => {
-        const ownerId = item.owner_id || item.user_id;
-        if (!ownerId || owners.has(ownerId)) return;
-
-        owners.set(ownerId, {
-          id: ownerId,
-          full_name: item.owner_name || null,
-          username: null,
-          avatar_url: null,
-        });
-      });
-
-      setProfiles(Array.from(owners.values()));
+      return;
     }
 
-    setLoading(false);
+    const owners = new Map<string, any>();
+    seedItems.forEach((item) => {
+      const ownerId = item.owner_id || item.user_id;
+      if (!ownerId || owners.has(ownerId)) return;
+
+      owners.set(ownerId, {
+        id: ownerId,
+        full_name: item.owner_name || null,
+        username: null,
+        avatar_url: null,
+      });
+    });
+
+    setProfiles(Array.from(owners.values()));
   }, []);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+
+    try {
+      const itemData = await fetchItemsPage(0, PAGE_SIZE - 1);
+      setItems(itemData);
+      setVisibleCount(PAGE_SIZE);
+      setHasMoreItems(itemData.length === PAGE_SIZE);
+      await fetchProfiles(itemData);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchItemsPage, fetchProfiles]);
+
+  const loadMoreItems = useCallback(async () => {
+    if (loading || loadingMore || !hasMoreItems) return;
+
+    setLoadingMore(true);
+
+    try {
+      const nextFrom = items.length;
+      const nextTo = nextFrom + PAGE_SIZE - 1;
+      const nextItems = await fetchItemsPage(nextFrom, nextTo);
+
+      setItems((prev) => {
+        const seen = new Set(prev.map((item) => item.id));
+        const uniqueNext = nextItems.filter((item) => !seen.has(item.id));
+        return [...prev, ...uniqueNext];
+      });
+      setVisibleCount((prev) => prev + PAGE_SIZE);
+      setHasMoreItems(nextItems.length === PAGE_SIZE);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [fetchItemsPage, hasMoreItems, items.length, loading, loadingMore]);
 
   const refreshDiscover = useCallback(async () => {
     await Promise.all([loadCurrentUser(), fetchData()]);
@@ -209,7 +248,7 @@ export default function Discover() {
                 type="button"
                 onClick={() => {
                   setSearchQuery(term);
-                  setVisibleCount(12);
+                  setVisibleCount(PAGE_SIZE);
                 }}
                 className="h-8 px-3 rounded-full border border-gray-300 bg-white text-xs"
               >
@@ -262,7 +301,7 @@ export default function Discover() {
             setSelectedCategory("All");
             setDistanceRange("all");
             setShowAvailableOnly(true);
-            setVisibleCount(12);
+            setVisibleCount(PAGE_SIZE);
           }}
           className="h-10 rounded-xl border border-gray-300 px-3 text-sm bg-white"
         >
@@ -343,7 +382,7 @@ export default function Discover() {
                 setSelectedCategory("All");
                 setDistanceRange("all");
                 setShowAvailableOnly(true);
-                setVisibleCount(12);
+                setVisibleCount(PAGE_SIZE);
               }}
               className="mt-4 h-10 px-4 rounded-xl border border-border/60 bg-background text-sm font-semibold"
             >
@@ -428,14 +467,17 @@ export default function Discover() {
         ))}
       </div>
 
-      {visibleItems.length < filteredItems.length && (
+      {hasMoreItems && (
         <div className="mt-6 flex justify-center">
           <button
             type="button"
-            onClick={() => setVisibleCount((prev) => prev + 12)}
-            className="h-10 px-4 rounded-xl border border-border/60 bg-card text-sm font-semibold hover:bg-muted/40 active:scale-[0.98] transition-all"
+            onClick={() => {
+              void loadMoreItems();
+            }}
+            disabled={loadingMore}
+            className="h-10 px-4 rounded-xl border border-border/60 bg-card text-sm font-semibold hover:bg-muted/40 active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Load more
+            {loadingMore ? "Loading more..." : "Load more"}
           </button>
         </div>
       )}

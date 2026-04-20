@@ -4,6 +4,8 @@ import { useLocation, useNavigate, useParams, useSearchParams } from "react-rout
 import { supabase } from "../lib/supabaseClient";
 import { usePageRefresh } from "@/hooks/usePageRefresh";
 
+const COMMISSION_RATE = 0.05;
+
 const Booking = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -78,7 +80,7 @@ const Booking = () => {
     return rentalDays * Number(item.price_per_day || 0);
   }, [item, rentalDays]);
 
-  const platformCommission = Math.round(rentalFee * 0.1);
+  const platformCommission = Math.round(rentalFee * COMMISSION_RATE);
   const standardShippingAmount = Number(item?.standard_shipping_price || 0);
   const expressShippingAmount = Number(item?.express_shipping_price || 0);
   const shippingFee = useMemo(() => {
@@ -379,7 +381,7 @@ const Booking = () => {
             <span className="text-foreground font-medium">${rentalFee}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Platform commission (10%)</span>
+            <span className="text-muted-foreground">Platform commission (5%)</span>
             <span className="text-foreground font-medium">${platformCommission}</span>
           </div>
           {deliveryMethod !== "pickup" && (
@@ -395,7 +397,7 @@ const Booking = () => {
             </div>
           )}
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Lender receives (90%)</span>
+            <span className="text-muted-foreground">Lender receives (95%)</span>
             <span className="text-foreground font-medium">${lenderPayout}</span>
           </div>
           <div className="border-t border-border/50 pt-2.5 flex justify-between text-base font-bold">

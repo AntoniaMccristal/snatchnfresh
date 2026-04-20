@@ -5,6 +5,8 @@ import { hasCompletedPostalProfile } from "./lib/profileCompletion";
 import { getMfaRequirement } from "./lib/mfa";
 import { ensureProfileIdentity } from "./lib/profileIdentity";
 
+const PROFILE_COMPLETION_CACHE_PREFIX = "profile-complete:";
+
 const ProtectedRoute = ({
   children,
   requireOnboarding = false,
@@ -40,29 +42,76 @@ const ProtectedRoute = ({
       }
     };
 
+    const getCachedProfileCompletion = (userId: string) => {
+      try {
+        return window.sessionStorage.getItem(`${PROFILE_COMPLETION_CACHE_PREFIX}${userId}`) === "true";
+      } catch {
+        return false;
+      }
+    };
+
+    const cacheProfileCompletion = (userId: string, done: boolean) => {
+      try {
+        window.sessionStorage.setItem(
+          `${PROFILE_COMPLETION_CACHE_PREFIX}${userId}`,
+          done ? "true" : "false",
+        );
+      } catch {
+        // ignore storage failures
+      }
+    };
+
+    const clearProfileCompletionCache = (userId?: string | null) => {
+      if (!userId) return;
+      try {
+        window.sessionStorage.removeItem(`${PROFILE_COMPLETION_CACHE_PREFIX}${userId}`);
+      } catch {
+        // ignore storage failures
+      }
+    };
+
+    const resolveProfileCompletion = async (userId: string) => {
+      const cachedDone = getCachedProfileCompletion(userId);
+      if (cachedDone) return true;
+
+      const done = await withTimeout(hasCompletedPostalProfile(userId), 2500, true);
+      cacheProfileCompletion(userId, done);
+      return done;
+    };
+
     const resolveSessionState = async (session: any) => {
       setAuthenticated(!!session);
 
-      if (session?.user && requireOnboarding) {
-        await syncProfileIdentity(session.user);
-        const done = await withTimeout(hasCompletedPostalProfile(session.user.id), 2500, true);
-        if (!mounted) return;
-        setNeedsOnboarding(!done);
-      } else {
+      if (!session?.user) {
+        setNeedsMfa(false);
         setNeedsOnboarding(false);
+        return;
       }
 
-      if (session?.user) {
-        const mfa = await withTimeout(
+      await syncProfileIdentity(session.user);
+
+      const [done, mfa] = await Promise.all([
+        requireOnboarding
+          ? resolveProfileCompletion(session.user.id)
+          : Promise.resolve(true),
+        withTimeout(
           getMfaRequirement(),
           2500,
           { needsChallenge: false, factorId: null, verifiedTotpCount: 0 },
-        );
-        if (!mounted) return;
-        setNeedsMfa(mfa.needsChallenge);
-      } else {
-        setNeedsMfa(false);
+        ),
+      ]);
+
+      if (!mounted) return;
+      setNeedsOnboarding(requireOnboarding ? !done : false);
+      setNeedsMfa(mfa.needsChallenge);
+    };
+
+    const handleAuthStateChange = async (event: string, session: any) => {
+      if (event === "SIGNED_OUT") {
+        clearProfileCompletionCache(session?.user?.id ?? null);
       }
+
+      await resolveSessionState(session);
     };
 
     const checkUser = async () => {
@@ -89,7 +138,7 @@ const ProtectedRoute = ({
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       try {
         if (!mounted) return;
-        await resolveSessionState(session);
+        await handleAuthStateChange(_event, session);
       } catch (error) {
         console.error("Auth state handler failed", error);
         if (!mounted) return;

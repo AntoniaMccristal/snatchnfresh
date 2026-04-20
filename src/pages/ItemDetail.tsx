@@ -1,13 +1,14 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useState, useEffect, useCallback } from "react";
+import { Suspense, lazy, useState, useEffect, useCallback } from "react";
 import { ArrowLeft, MessageCircle, ShoppingBag } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { getItemImageUrl } from "@/lib/images";
-import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { addToBag, getBagItemIds } from "@/lib/bag";
 import { usePageRefresh } from "@/hooks/usePageRefresh";
 import ItemCard from "@/components/ItemCard";
+
+const DatePicker = lazy(() => import("react-datepicker"));
 
 function formatDateForInput(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -35,6 +36,14 @@ function getDatesBetween(startValue: string, endValue: string) {
 
 function rangesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string) {
   return aStart < bEnd && aEnd > bStart;
+}
+
+function DatePickerFallback({ placeholder }: { placeholder: string }) {
+  return (
+    <div className="w-full border rounded-lg p-2 text-sm bg-background text-muted-foreground">
+      {placeholder}
+    </div>
+  );
 }
 
 const ItemDetail = () => {
@@ -361,25 +370,29 @@ const ItemDetail = () => {
 
           <h3 className="font-semibold text-sm">Select Dates</h3>
 
-          <DatePicker
-            selected={parseDate(startDate)}
-            onChange={(date) => setStartDate(date ? formatDateForInput(date) : "")}
-            minDate={new Date()}
-            excludeDates={blockedDates}
-            placeholderText="Pickup date"
-            className="w-full border rounded-lg p-2 text-sm bg-background"
-            dateFormat="yyyy-MM-dd"
-          />
+          <Suspense fallback={<DatePickerFallback placeholder="Loading pickup calendar..." />}>
+            <DatePicker
+              selected={parseDate(startDate)}
+              onChange={(date) => setStartDate(date ? formatDateForInput(date) : "")}
+              minDate={new Date()}
+              excludeDates={blockedDates}
+              placeholderText="Pickup date"
+              className="w-full border rounded-lg p-2 text-sm bg-background"
+              dateFormat="yyyy-MM-dd"
+            />
+          </Suspense>
 
-          <DatePicker
-            selected={parseDate(endDate)}
-            onChange={(date) => setEndDate(date ? formatDateForInput(date) : "")}
-            minDate={parseDate(startDate) || new Date()}
-            excludeDates={blockedDates}
-            placeholderText="Return date"
-            className="w-full border rounded-lg p-2 text-sm bg-background"
-            dateFormat="yyyy-MM-dd"
-          />
+          <Suspense fallback={<DatePickerFallback placeholder="Loading return calendar..." />}>
+            <DatePicker
+              selected={parseDate(endDate)}
+              onChange={(date) => setEndDate(date ? formatDateForInput(date) : "")}
+              minDate={parseDate(startDate) || new Date()}
+              excludeDates={blockedDates}
+              placeholderText="Return date"
+              className="w-full border rounded-lg p-2 text-sm bg-background"
+              dateFormat="yyyy-MM-dd"
+            />
+          </Suspense>
 
           {bookedRanges.length > 0 && (
             <p className="text-xs text-muted-foreground">

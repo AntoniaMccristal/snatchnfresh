@@ -1,4 +1,4 @@
-export const FALLBACK_ITEM_IMAGE = "https://via.placeholder.com/400x600?text=No+Image";
+export const FALLBACK_ITEM_IMAGE = "/placeholder-item.svg";
 
 const ACCEPTED_IMAGE_TYPES = [
   "image/jpeg",
