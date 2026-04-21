@@ -3,7 +3,6 @@ import { Bell, BellRing, MapPin, ShoppingBag, Sparkles, X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ItemCard from "@/components/ItemCard";
 import BrandMark from "@/components/BrandMark";
-import CollectionScroll from "@/components/CollectionScroll";
 import CategoryFilter from "@/components/CategoryFilter";
 import { categories as defaultCategories } from "@/data/mockData";
 import { getItemImageUrl } from "@/lib/images";
@@ -446,18 +445,21 @@ const Home = () => {
 
   return (
     <div className="app-shell bg-warm-gradient pb-24 page-transition">
-      <header className="sticky top-0 z-40 px-5 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 border-b border-border/40 bg-background/95 backdrop-blur">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <BrandMark size={34} />
-              <h1 className="text-2xl font-display font-bold text-foreground tracking-tight">Snatch'n</h1>
+      <header className="sticky top-0 z-40 border-b border-border/40 bg-background/95 backdrop-blur">
+        <div className="px-5 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/50 bg-card shadow-soft">
+                <BrandMark size={24} />
+              </div>
+              <div>
+                <h1 className="text-2xl font-display font-bold text-foreground tracking-tight">Snatch'n</h1>
+                <div className="flex items-center gap-1 text-[12px] text-muted-foreground mt-0.5">
+                  <MapPin size={11} className="text-primary" />
+                  <span>Sydney, AU · Near you</span>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-1 text-[12px] text-muted-foreground mt-0.5">
-              <MapPin size={11} className="text-primary" />
-              <span>Sydney, AU</span>
-            </div>
-          </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -486,6 +488,14 @@ const Home = () => {
                 </span>
               )}
             </button>
+          </div>
+        </div>
+
+          <div className="-mx-1 border-t border-border/30 pt-1">
+            <CategoryFilter selected={selectedCategory} onSelect={(c) => {
+              setSelectedCategory(c);
+              setSelectedCollection(undefined);
+            }} categories={categoryOptions} />
           </div>
         </div>
 
@@ -628,49 +638,10 @@ const Home = () => {
           </>
         )}
       </header>
-
-      <div className="mx-auto w-full max-w-7xl px-5 mb-5 mt-2">
-        <h3 className="font-display text-base font-semibold text-foreground mb-3">Active Offers</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5">
-          {activeOffers.map((offer) => (
-            <button
-              key={offer.id}
-              onClick={() => navigate(`/item/${offer.id}`)}
-              className="w-full flex items-center gap-3 p-3.5 bg-card rounded-2xl border border-border/50 shadow-soft text-left"
-            >
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-terracotta-light to-blush flex items-center justify-center text-[11px] font-bold text-primary shrink-0">
-                {offer.avatar}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-semibold text-foreground truncate">{offer.item}</p>
-                <p className="text-[11px] text-muted-foreground">{offer.seller} · ${offer.price}/day</p>
-                <p className="text-[10px] text-primary font-medium mt-0.5">{offer.location} · {offer.distance} away</p>
-              </div>
-              <span className="shrink-0 px-3 py-1.5 bg-primary text-primary-foreground rounded-xl text-[11px] font-semibold">
-                View
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="mb-5 mx-auto w-full max-w-7xl">
-        <CollectionScroll selected={selectedCollection} onSelect={(c) =>
-          setSelectedCollection(c === selectedCollection ? undefined : c)
-        } />
-      </div>
-
-      <div className="mb-5 mx-auto w-full max-w-7xl">
-        <CategoryFilter selected={selectedCategory} onSelect={(c) => {
-          setSelectedCategory(c);
-          setSelectedCollection(undefined);
-        }} categories={categoryOptions} />
-      </div>
-
       <div className="mx-auto w-full max-w-7xl px-5 mb-8">
         <div className="flex items-center justify-between mb-3">
           <p className="text-[13px] text-muted-foreground">
-            <span className="font-semibold text-foreground">{filteredItems.length}</span> Suggested for you
+            <span className="font-semibold text-foreground">{filteredItems.length}</span> items near you
           </p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
@@ -694,39 +665,6 @@ const Home = () => {
               <ItemCard key={`ai-${item.id}`} item={item} />
             ))}
           </div>
-        </div>
-      </div>
-
-      <div className="mb-8">
-        <div className="mx-auto w-full max-w-7xl px-5 mb-3 flex items-center justify-between">
-          <h3 className="font-display text-base font-semibold text-foreground">From wardrobes near you</h3>
-          <button
-            type="button"
-            onClick={() => navigate("/discover")}
-            className="text-[12px] text-primary font-semibold hover:underline"
-          >
-            See all →
-          </button>
-        </div>
-        <div className="hidden md:grid mx-auto w-full max-w-7xl px-5 grid-cols-3 xl:grid-cols-4 gap-3.5">
-          {availableItems.slice(0, 8).map((item) => (
-            <div key={`near-desktop-${item.id}`}>
-              <ItemCard item={item} />
-              <p className="text-[11px] text-muted-foreground mt-1 px-1">
-                {getItemLocation(item)} · {getItemDistance(item)} away
-              </p>
-            </div>
-          ))}
-        </div>
-        <div className="flex md:hidden gap-3.5 overflow-x-auto px-5 pb-2 scrollbar-none">
-          {availableItems.slice(0, 6).map((item) => (
-            <div key={`near-${item.id}`} className="w-[220px] shrink-0">
-              <ItemCard item={item} variant="featured" />
-              <p className="text-[11px] text-muted-foreground mt-1 px-1">
-                {getItemLocation(item)} · {getItemDistance(item)} away
-              </p>
-            </div>
-          ))}
         </div>
       </div>
     </div>

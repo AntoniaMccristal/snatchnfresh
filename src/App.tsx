@@ -16,6 +16,7 @@ const Bag = lazy(() => import("./pages/Bag"));
 const About = lazy(() => import("./pages/About"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
+const RentalAgreement = lazy(() => import("./pages/RentalAgreement"));
 const Help = lazy(() => import("./pages/Help"));
 const Contact = lazy(() => import("./pages/Contact"));
 const Reviews = lazy(() => import("./pages/Reviews"));
@@ -26,6 +27,7 @@ import BottomNav from "./components/BottomNav";
 import SiteFooter from "./components/SiteFooter";
 import BrandMark from "./components/BrandMark";
 import { Toaster } from "./components/ui/toaster";
+import PWAInstallPrompt from "./components/PWAInstallPrompt";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -142,6 +144,7 @@ export default function App() {
             <Route path="/about" element={<About />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
+            <Route path="/rental-agreement" element={<RentalAgreement />} />
             <Route path="/help" element={<Help />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/reviews" element={<Reviews />} />
@@ -171,6 +174,7 @@ export default function App() {
       {/* Bottom nav always visible except on auth */}
       <BottomNav />
       <Toaster />
+      <PWAInstallPrompt />
 
       {showSplash && (
         <div className="fixed inset-0 z-[200] bg-primary-gradient flex items-center justify-center">

@@ -306,24 +306,24 @@ export default function Messages() {
               <button
                 key={conv.peerId}
                 onClick={() => navigate(`/messages?user=${conv.peerId}${conv.itemId ? `&item=${conv.itemId}` : ""}`)}
-                className={`w-full text-left rounded-xl p-2.5 border ${
-                  active ? "border-primary/40 bg-primary/10" : "border-border/40"
+                className={`relative w-full text-left rounded-xl p-3.5 border transition-colors ${
+                  active ? "border-primary/40 bg-primary/5 border-l-2 border-l-primary" : "border-border/40 hover:bg-muted/20"
                 }`}
               >
-                <div className="flex items-start gap-2">
+                <div className="flex items-start gap-3">
                   {profile?.avatar_url ? (
-                    <img src={profile.avatar_url} alt={getDisplayName(profile)} className="w-8 h-8 rounded-full object-cover" />
+                    <img src={profile.avatar_url} alt={getDisplayName(profile)} className="w-10 h-10 rounded-full object-cover" />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold">
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-bold">
                       {getInitial(profile)}
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-foreground truncate">{getDisplayName(profile)}</p>
+                    <p className="text-sm font-bold text-foreground truncate">{getDisplayName(profile)}</p>
                     <p className="text-[11px] text-muted-foreground">{getUsernameTag(profile)}</p>
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">{conv.last.body}</p>
+                    <p className="mt-1 text-xs text-muted-foreground truncate">{conv.last.body}</p>
                     {linkedItem && (
-                      <div className="mt-1 inline-flex items-center gap-1 rounded-md border border-border/50 bg-background px-1.5 py-1 max-w-full">
+                      <div className="mt-1.5 inline-flex items-center gap-1 rounded-md border border-border/50 bg-background px-1.5 py-1 max-w-full">
                         <img
                           src={getItemImageUrl(linkedItem.image_url, linkedItem.id, linkedItem.updated_at || linkedItem.created_at)}
                           alt={linkedItem.title}
@@ -332,14 +332,16 @@ export default function Messages() {
                         <span className="text-[10px] text-foreground truncate">{linkedItem.title}</span>
                       </div>
                     )}
-                    <p className="text-[10px] text-muted-foreground mt-1">{formatTime(conv.last.created_at)}</p>
+                  </div>
+                  <div className="flex min-h-full flex-col items-end justify-between gap-2">
+                    {conv.unread > 0 && (
+                      <span className="inline-flex min-w-5 h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold items-center justify-center">
+                        {conv.unread}
+                      </span>
+                    )}
+                    <p className="text-[10px] text-muted-foreground">{formatTime(conv.last.created_at)}</p>
                   </div>
                 </div>
-                {conv.unread > 0 && (
-                  <span className="inline-flex mt-1 min-w-4 h-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] items-center justify-center">
-                    {conv.unread}
-                  </span>
-                )}
               </button>
             );
           })}
@@ -357,9 +359,8 @@ export default function Messages() {
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-foreground truncate">{getDisplayName(selectedProfile)}</p>
+                  <p className="text-sm font-bold text-foreground truncate">{getDisplayName(selectedProfile)}</p>
                   <p className="text-[11px] text-muted-foreground">{getUsernameTag(selectedProfile)}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Conversation participant</p>
                 </div>
                 <button
                   type="button"
@@ -400,25 +401,12 @@ export default function Messages() {
               return (
                 <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                   <div className="max-w-[88%]">
-                    <div className={`mb-1 flex items-center gap-1.5 ${mine ? "justify-end" : "justify-start"}`}>
-                      {!mine && (
-                        senderProfile?.avatar_url ? (
-                          <img
-                            src={senderProfile.avatar_url}
-                            alt={getDisplayName(senderProfile)}
-                            className="w-5 h-5 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[9px] font-semibold">
-                            {getInitial(senderProfile)}
-                          </div>
-                        )
-                      )}
-                      <p className={`text-[10px] ${mine ? "text-muted-foreground" : "text-foreground"}`}>
-                        {mine ? "You" : getDisplayName(senderProfile)}
+                    {!mine && (
+                      <p className="mb-1 text-[11px] font-semibold text-foreground">
+                        {getDisplayName(senderProfile)}
                       </p>
-                    </div>
-                    <div className={`rounded-xl px-3 py-2 text-sm ${mine ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
+                    )}
+                    <div className={`rounded-2xl px-3 py-2 text-sm ${mine ? "bg-foreground text-background rounded-br-sm" : "bg-card border border-border/50 text-foreground rounded-bl-sm"}`}>
                     {messageItem && (
                       <div className={`mb-1.5 rounded-lg border ${mine ? "border-white/30 bg-white/10" : "border-border/40 bg-background/70"} p-1.5 flex items-center gap-1.5`}>
                         <img
@@ -432,7 +420,7 @@ export default function Messages() {
                       </div>
                     )}
                     <p>{message.body}</p>
-                    <p className={`text-[10px] mt-1 ${mine ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                    <p className={`text-[10px] mt-1 opacity-60 ${mine ? "text-background" : "text-muted-foreground"}`}>
                       {formatTime(message.created_at)}
                     </p>
                     </div>
@@ -448,13 +436,13 @@ export default function Messages() {
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder="Write a message..."
-                className="flex-1 h-10 rounded-xl border border-border/60 bg-background px-3 text-sm"
+                className="flex-1 h-12 rounded-2xl border border-border/60 bg-background px-4 text-sm"
               />
               <button
                 type="button"
                 onClick={sendMessage}
                 disabled={sending || !draft.trim()}
-                className="h-10 w-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-50"
+                className="h-11 w-11 rounded-xl bg-foreground text-background flex items-center justify-center disabled:opacity-50"
               >
                 <Send size={14} />
               </button>

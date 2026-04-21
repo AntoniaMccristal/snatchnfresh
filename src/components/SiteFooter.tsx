@@ -32,6 +32,7 @@ export default function SiteFooter() {
             <Link to="/help" className="block hover:underline">Help Centre</Link>
             <Link to="/privacy" className="block hover:underline">Privacy Policy</Link>
             <Link to="/terms" className="block hover:underline">Terms & Conditions</Link>
+            <Link to="/rental-agreement" className="block hover:underline">Rental Agreement</Link>
           </div>
         </div>
 
