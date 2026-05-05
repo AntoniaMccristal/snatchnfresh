@@ -89,24 +89,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         type: "express",
         country: country || "AU",
         email: user.email || undefined,
+        business_type: "individual",
+        individual: {
+          email: user.email || undefined,
+        },
         capabilities: {
           card_payments: { requested: true },
           transfers: { requested: true },
+        },
+        settings: {
+          payouts: {
+            schedule: {
+              interval: "manual",
+            },
+          },
         },
       });
 
       accountId = account.id;
 
-      await supabaseUserScopedClient
-        .from("profiles")
-        .upsert(
-          {
-            id: user.id,
-            stripe_account_id: accountId,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "id" },
-        );
+      // Try saving with stripe_account_id first, fall back to stripe_connect_account_id
+      let saveError: any = null;
+      for (const col of ["stripe_account_id", "stripe_connect_account_id"]) {
+        const { error } = await supabaseUserScopedClient
+          .from("profiles")
+          .upsert({ id: user.id, [col]: accountId, updated_at: new Date().toISOString() }, { onConflict: "id" });
+        if (!error) { saveError = null; break; }
+        saveError = error;
+      }
+      if (saveError) console.error("Failed to save Stripe account ID:", saveError);
     }
 
     const origin = getAppOrigin(req);
