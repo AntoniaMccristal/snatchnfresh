@@ -257,6 +257,11 @@ const Booking = () => {
   const insuranceFee = insurance ? 5 : 0;
   const total = rentalFee + shippingFee + insuranceFee;
   const lenderPayout = rentalFee - platformCommission + shippingFee;
+  const images: string[] = Array.isArray(item?.image_urls) && item.image_urls.length > 0
+    ? item.image_urls
+    : item?.image_url
+      ? [item.image_url]
+      : [];
 
   async function handlePreparePayment() {
     if (!item || !itemId || !startDate || !endDate || rentalDays <= 0) return;
@@ -383,9 +388,10 @@ const Booking = () => {
   }
 
   // ── Main booking UI ────────────────────────────────────────────────────────
-  return (
-    <div className="app-shell bg-warm-gradient pb-10 page-transition">
-      <div className="relative px-5 pt-[max(0.75rem,env(safe-area-inset-top))] space-y-5">
+  try {
+    return (
+      <div className="app-shell bg-warm-gradient pb-10 page-transition">
+        <div className="relative px-5 pt-[max(0.75rem,env(safe-area-inset-top))] space-y-5">
 
         {/* Back button */}
         <button
@@ -397,8 +403,10 @@ const Booking = () => {
 
         {/* Item summary — always visible */}
         <div className="flex gap-3.5 p-4 bg-card rounded-2xl border border-border/50 shadow-card">
-          {item.image_url && (
-            <img src={item.image_url} alt={item.title} className="w-[72px] h-[88px] object-cover rounded-xl shadow-soft" />
+          {images[0] ? (
+            <img src={images[0]} alt={item.title} className="w-[72px] h-[88px] object-cover rounded-xl shadow-soft" />
+          ) : (
+            <div className="w-[72px] h-[88px] rounded-xl bg-muted shrink-0" />
           )}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
@@ -591,9 +599,29 @@ const Booking = () => {
           </Elements>
         )}
 
+        </div>
       </div>
-    </div>
-  );
+    );
+  } catch (error) {
+    console.error("Booking render error", error);
+    return (
+      <div className="app-shell p-6 space-y-4">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
+          <p className="text-base font-semibold text-red-900">This booking could not be displayed</p>
+          <p className="mt-1 text-sm text-red-700">
+            There was a problem rendering checkout. Please go back and try again.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="h-10 px-4 rounded-xl border border-border/60 bg-card text-sm font-semibold"
+        >
+          Go back
+        </button>
+      </div>
+    );
+  }
 };
 
 export default Booking;
