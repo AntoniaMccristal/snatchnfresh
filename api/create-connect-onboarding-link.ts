@@ -24,6 +24,21 @@ function isValidStripeSecretKey(key: string) {
   return value.startsWith("sk_test_") || value.startsWith("sk_live_");
 }
 
+function formatAustralianPhone(phone: string): string | undefined {
+  if (!phone) return undefined;
+  // Remove all spaces, dashes, brackets
+  const cleaned = phone.replace(/[\s\-\(\)]/g, "");
+  // Already in international format
+  if (cleaned.startsWith("+")) return cleaned;
+  // Australian mobile starting with 04 -> +614
+  if (cleaned.startsWith("04")) return "+61" + cleaned.slice(1);
+  // Australian landline starting with 0 -> +61
+  if (cleaned.startsWith("0")) return "+61" + cleaned.slice(1);
+  // Already has 61 prefix
+  if (cleaned.startsWith("61")) return "+" + cleaned;
+  return "+61" + cleaned;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -113,7 +128,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           email: user.email || undefined,
           first_name: firstName || undefined,
           last_name: lastName || undefined,
-          phone: phone || undefined,
+          phone: phone ? formatAustralianPhone(phone) : undefined,
         },
 
         // Prefill business profile with our platform details
@@ -172,6 +187,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       refresh_url: refreshUrl.toString(),
       return_url: returnUrl.toString(),
       type: "account_onboarding",
+      collection_options: {
+        fields: "eventually_due",
+      },
     });
 
     return res.status(200).json({ url: accountLink.url, accountId });

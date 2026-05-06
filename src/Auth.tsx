@@ -427,6 +427,8 @@ export default function Auth() {
           <>
             <input
               type="email"
+              name="email"
+              autoComplete="email"
               placeholder="Email"
               className="w-full h-11 rounded-xl border border-border/60 px-3 bg-background"
               value={email}

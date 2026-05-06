@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ChevronDown, Wrench } from "lucide-react";
+import { Loader2, Plus, X } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -30,8 +30,21 @@ type DraftPayload = {
   allowsPickup: boolean;
   allowsDropoff: boolean;
   imageUrl: string;
+  imageUrls: string[];
   updatedAt: number;
 };
+
+type ListingImage = {
+  id: string;
+  file: File | null;
+  previewUrl: string;
+  persistedUrl: string;
+  uploading: boolean;
+};
+
+function createImageId(name = "photo") {
+  return `${Date.now()}-${name}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
 type ValidationState = {
   image: boolean;
@@ -180,11 +193,11 @@ const ListItem = () => {
   const [expressShippingPrice, setExpressShippingPrice] = useState("");
   const [allowsPickup, setAllowsPickup] = useState(true);
   const [allowsDropoff, setAllowsDropoff] = useState(true);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imageUrl, setImageUrl] = useState("");
+  const [images, setImages] = useState<ListingImage[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [stripeConnected, setStripeConnected] = useState(false);
+  const [refreshingStripeStatus, setRefreshingStripeStatus] = useState(false);
   const [isFirstListing, setIsFirstListing] = useState(false);
 
   const [serverItemLoaded, setServerItemLoaded] = useState(false);
@@ -194,11 +207,20 @@ const ListItem = () => {
   const [lastGeneratedAt, setLastGeneratedAt] = useState<number | null>(null);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
-  const [runningDiagnostics, setRunningDiagnostics] = useState(false);
-  const [showDiagnostics, setShowDiagnostics] = useState(false);
-  const [diagnostics, setDiagnostics] = useState<Array<{ label: string; ok: boolean; detail: string }>>([]);
+  const previewObjectUrlsRef = useRef<string[]>([]);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const maxImages = 6;
 
-  const previewObjectUrlRef = useRef<string | null>(null);
+  const removeImage = (imageId: string) => {
+    setImages((current) => {
+      const image = current.find((entry) => entry.id === imageId);
+      if (image?.previewUrl) {
+        URL.revokeObjectURL(image.previewUrl);
+        previewObjectUrlsRef.current = previewObjectUrlsRef.current.filter((url) => url !== image.previewUrl);
+      }
+      return current.filter((entry) => entry.id !== imageId);
+    });
+  };
 
   const isOwnerAdmin = useMemo(() => {
     if (!currentUser) return false;
@@ -222,49 +244,60 @@ const ListItem = () => {
     return `snatchn:list-draft:${currentUser.id}:${id || "new"}`;
   }, [currentUser?.id, id]);
 
-  useEffect(() => {
-    const loadUser = async () => {
-      const { data } = await supabase.auth.getUser();
-      const user = data?.user ?? null;
-      setCurrentUser(user);
+  const loadProfile = useCallback(async () => {
+    const { data } = await supabase.auth.getUser();
+    const user = data?.user ?? null;
+    setCurrentUser(user);
 
-      if (!user || isEditing) return;
+    if (!user || isEditing) return;
 
-      const [{ data: profileRow }, ownerCountResult, userCountResult] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("stripe_account_id,stripe_connect_account_id")
-          .eq("id", user.id)
-          .maybeSingle(),
-        supabase
-          .from("items")
-          .select("id", { count: "exact", head: true })
-          .eq("owner_id", user.id),
-        supabase
-          .from("items")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id),
-      ]);
+    const [{ data: profileRow }, ownerCountResult, userCountResult] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("stripe_account_id,stripe_connect_account_id")
+        .eq("id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("items")
+        .select("id", { count: "exact", head: true })
+        .eq("owner_id", user.id),
+      supabase
+        .from("items")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id),
+    ]);
 
-      setStripeConnected(Boolean(profileRow?.stripe_account_id || profileRow?.stripe_connect_account_id));
+    setStripeConnected(Boolean(profileRow?.stripe_account_id || profileRow?.stripe_connect_account_id));
 
-      const ownerCountMissing =
-        ownerCountResult.error?.code === "42703" ||
-        String(ownerCountResult.error?.message || "").toLowerCase().includes("owner_id");
-      const userCountMissing =
-        userCountResult.error?.code === "42703" ||
-        String(userCountResult.error?.message || "").toLowerCase().includes("user_id");
+    const ownerCountMissing =
+      ownerCountResult.error?.code === "42703" ||
+      String(ownerCountResult.error?.message || "").toLowerCase().includes("owner_id");
+    const userCountMissing =
+      userCountResult.error?.code === "42703" ||
+      String(userCountResult.error?.message || "").toLowerCase().includes("user_id");
 
-      const ownerCount =
-        ownerCountResult.error && !ownerCountMissing ? 0 : Number(ownerCountResult.count || 0);
-      const userCount =
-        userCountResult.error && !userCountMissing ? 0 : Number(userCountResult.count || 0);
+    const ownerCount =
+      ownerCountResult.error && !ownerCountMissing ? 0 : Number(ownerCountResult.count || 0);
+    const userCount =
+      userCountResult.error && !userCountMissing ? 0 : Number(userCountResult.count || 0);
 
-      setIsFirstListing(ownerCount + userCount === 0);
-    };
-
-    loadUser();
+    setIsFirstListing(ownerCount + userCount === 0);
   }, [isEditing]);
+
+  useEffect(() => {
+    void loadProfile();
+  }, [loadProfile]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("stripe") !== "connected") return;
+
+    const timeout = window.setTimeout(() => {
+      void loadProfile();
+    }, 2000);
+
+    return () => window.clearTimeout(timeout);
+  }, [loadProfile]);
 
   useEffect(() => {
     if (!isEditing) {
@@ -287,7 +320,23 @@ const ListItem = () => {
         setExpressShippingPrice(String(data.express_shipping_price ?? ""));
         setAllowsPickup(data.allows_pickup !== false);
         setAllowsDropoff(data.allows_dropoff !== false);
-        setImageUrl(data.image_url || "");
+        const existingImageUrls = Array.isArray(data.image_urls)
+          ? data.image_urls.filter((value: unknown) => typeof value === "string" && value)
+          : [];
+        const fallbackImageUrls = existingImageUrls.length > 0
+          ? existingImageUrls
+          : data.image_url
+            ? [data.image_url]
+            : [];
+        setImages(
+          fallbackImageUrls.slice(0, maxImages).map((url: string, index: number) => ({
+            id: `existing-${index}-${url}`,
+            file: null,
+            previewUrl: "",
+            persistedUrl: url,
+            uploading: false,
+          })),
+        );
       }
 
       setServerItemLoaded(true);
@@ -295,45 +344,6 @@ const ListItem = () => {
 
     fetchItem();
   }, [id, isEditing]);
-
-  useEffect(() => {
-    if (!draftKey || !serverItemLoaded) return;
-
-    const raw = localStorage.getItem(draftKey);
-    if (!raw) {
-      setHasDraft(false);
-      return;
-    }
-
-    try {
-      const draft = JSON.parse(raw) as DraftPayload;
-      setHasDraft(true);
-      const draftAgeHours = Math.round((Date.now() - (draft.updatedAt || 0)) / (1000 * 60 * 60));
-
-      const shouldRestore = window.confirm(
-        `You have an unsaved draft${draftAgeHours >= 1 ? ` from about ${draftAgeHours}h ago` : ""}. Restore it?`,
-      );
-
-      if (shouldRestore) {
-        setTitle(draft.title || "");
-        setBrand(draft.brand || "");
-        setArea(draft.area || "");
-        setCategory(draft.category || CATEGORY_OPTIONS[0]);
-        setCondition(draft.condition || CONDITION_OPTIONS[0]);
-        setDescription(draft.description || "");
-        setPricePerDay(draft.pricePerDay || "");
-        setStandardShippingPrice(draft.standardShippingPrice || "");
-        setExpressShippingPrice(draft.expressShippingPrice || "");
-        setAllowsPickup(draft.allowsPickup !== false);
-        setAllowsDropoff(draft.allowsDropoff !== false);
-        if (draft.imageUrl) setImageUrl(draft.imageUrl);
-        toast({ title: "Draft restored" });
-      }
-    } catch {
-      localStorage.removeItem(draftKey);
-      setHasDraft(false);
-    }
-  }, [draftKey, serverItemLoaded]);
 
   useEffect(() => {
     if (!draftKey || !serverItemLoaded) return;
@@ -351,7 +361,8 @@ const ListItem = () => {
         expressShippingPrice,
         allowsPickup,
         allowsDropoff,
-        imageUrl: isPersistableItemImageUrl(imageUrl) ? imageUrl : "",
+        imageUrl: images[0]?.persistedUrl || "",
+        imageUrls: images.map((image) => image.persistedUrl).filter(Boolean),
         updatedAt: Date.now(),
       };
 
@@ -361,13 +372,11 @@ const ListItem = () => {
     }, 650);
 
     return () => window.clearTimeout(timeout);
-  }, [title, brand, area, category, condition, description, pricePerDay, standardShippingPrice, expressShippingPrice, allowsPickup, allowsDropoff, imageUrl, draftKey, serverItemLoaded]);
+  }, [title, brand, area, category, condition, description, pricePerDay, standardShippingPrice, expressShippingPrice, allowsPickup, allowsDropoff, images, draftKey, serverItemLoaded]);
 
   useEffect(() => {
     return () => {
-      if (previewObjectUrlRef.current) {
-        URL.revokeObjectURL(previewObjectUrlRef.current);
-      }
+      previewObjectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
     };
   }, []);
 
@@ -379,43 +388,87 @@ const ListItem = () => {
     toast({ title: "Draft cleared" });
   };
 
-  async function handleImageSelect(file: File) {
-    const valid = validateImageFile(file);
-    if (!valid.ok) {
-      toast({ title: "Image not accepted", description: valid.reason, variant: "destructive" });
-      return;
-    }
+  async function handleImageSelect(fileList: FileList | null) {
+    const files = Array.from(fileList || []).slice(0, Math.max(0, maxImages - images.length));
+    if (files.length === 0) return;
+
+    const optimizationMessages: string[] = [];
+    const previousCount = images.length;
 
     try {
-      const prepared = await prepareImageForUpload(file);
-      setImageFile(prepared.file);
+      for (const file of files) {
+        const valid = validateImageFile(file);
+        if (!valid.ok) {
+          toast({ title: "Image not accepted", description: valid.reason, variant: "destructive" });
+          continue;
+        }
 
-      if (previewObjectUrlRef.current) {
-        URL.revokeObjectURL(previewObjectUrlRef.current);
+        const prepared = await prepareImageForUpload(file);
+        const previewUrl = URL.createObjectURL(prepared.file);
+        previewObjectUrlsRef.current.push(previewUrl);
+        const imageId = createImageId(prepared.file.name);
+        setImages((current) => [
+          ...current,
+          {
+            id: imageId,
+            file: null,
+            previewUrl,
+            persistedUrl: "",
+            uploading: true,
+          },
+        ].slice(0, maxImages));
+
+        const userId = currentUser?.id;
+        if (!userId) {
+          throw new Error("Please log in before uploading photos.");
+        }
+
+        const filePath = buildStorageFilePath(userId, prepared.file);
+        const { error: uploadError } = await withTimeout(
+          supabase.storage.from("items").upload(filePath, prepared.file, {
+            upsert: false,
+            cacheControl: "3600",
+          }),
+          15000,
+          "Image upload",
+        );
+
+        if (uploadError) {
+          removeImage(imageId);
+          throw uploadError;
+        }
+
+        const { data } = supabase.storage.from("items").getPublicUrl(filePath);
+        setImages((current) => current.map((image) => (
+          image.id === imageId
+            ? { ...image, persistedUrl: data.publicUrl, uploading: false }
+            : image
+        )));
+
+        optimizationMessages.push(
+          prepared.compressed
+            ? `${formatBytes(prepared.originalSize)} -> ${formatBytes(prepared.finalSize)}`
+            : `${formatBytes(prepared.finalSize)}`,
+        );
       }
 
-      const previewUrl = URL.createObjectURL(prepared.file);
-      previewObjectUrlRef.current = previewUrl;
-      setImageUrl(previewUrl);
-      setGeneratingListing(true);
-
-      if (prepared.compressed) {
-        toast({
-          title: "Image optimized",
-          description: `${formatBytes(prepared.originalSize)} -> ${formatBytes(prepared.finalSize)}`,
-        });
-      } else {
-        toast({ title: "Image selected", description: `${formatBytes(prepared.finalSize)}` });
-      }
-
-      const generated = await generateListingFromImage(previewUrl, brand);
-      setTitle((current) => (current.trim() ? current : generated.title));
-      setDescription((current) => (current.trim() ? current : generated.description));
-      setLastGeneratedAt(Date.now());
       toast({
-        title: "Suggested listing ready",
-        description: "Title and description were auto-filled from the image. Review before publishing.",
+        title: files.length > 1 ? `${files.length} photos selected` : "Photo selected",
+        description: optimizationMessages.join(" • "),
       });
+
+      if (previousCount === 0) {
+        setGeneratingListing(true);
+        const firstPreviewUrl = previewObjectUrlsRef.current[previewObjectUrlsRef.current.length - files.length];
+        const generated = await generateListingFromImage(firstPreviewUrl, brand);
+        setTitle((current) => (current.trim() ? current : generated.title));
+        setDescription((current) => (current.trim() ? current : generated.description));
+        setLastGeneratedAt(Date.now());
+        toast({
+          title: "Suggested listing ready",
+          description: "Title and description were auto-filled from the cover photo. Review before publishing.",
+        });
+      }
     } catch (error: any) {
       toast({ title: "Image processing failed", description: error?.message || "Try another photo.", variant: "destructive" });
     } finally {
@@ -424,10 +477,12 @@ const ListItem = () => {
   }
 
   async function handleGenerateSuggestions() {
-    if (!imageUrl) {
+    const coverImage = images[0];
+    const coverImageSrc = coverImage?.previewUrl || coverImage?.persistedUrl || "";
+    if (!coverImageSrc) {
       toast({
         title: "Add an image first",
-        description: "Upload a listing photo before generating suggestions.",
+        description: "Upload a cover photo before generating suggestions.",
         variant: "destructive",
       });
       return;
@@ -435,7 +490,7 @@ const ListItem = () => {
 
     try {
       setGeneratingListing(true);
-      const generated = await generateListingFromImage(imageUrl, brand);
+      const generated = await generateListingFromImage(coverImageSrc, brand);
       setTitle(generated.title);
       setDescription(generated.description);
       setLastGeneratedAt(Date.now());
@@ -452,91 +507,6 @@ const ListItem = () => {
     } finally {
       setGeneratingListing(false);
     }
-  }
-
-  async function runDiagnostics() {
-    if (!isEditing || !id || !currentUser) return;
-
-    setRunningDiagnostics(true);
-    const checks: Array<{ label: string; ok: boolean; detail: string }> = [];
-
-    const { data: userData } = await supabase.auth.getUser();
-    checks.push({
-      label: "Authenticated session",
-      ok: Boolean(userData?.user?.id),
-      detail: userData?.user?.id ? "Session found" : "No active session",
-    });
-
-    const { data: row, error: rowError } = await supabase.from("items").select("*").eq("id", id).maybeSingle();
-    checks.push({
-      label: "Can read listing row",
-      ok: !rowError && Boolean(row),
-      detail: rowError?.message || (row ? "Listing row loaded" : "Listing row not visible"),
-    });
-
-    const ownerId = row?.owner_id || row?.user_id;
-    checks.push({
-      label: "Ownership matches editor",
-      ok: Boolean(ownerId && ownerId === currentUser.id),
-      detail: ownerId ? (ownerId === currentUser.id ? "Owner/user id matches" : "Logged-in user does not match row owner") : "owner_id/user_id not present",
-    });
-
-    const { error: storageReadError } = await supabase.storage.from("items").list("", { limit: 1 });
-    checks.push({
-      label: "Storage bucket access",
-      ok: !storageReadError,
-      detail: storageReadError?.message || "Can list bucket",
-    });
-
-    let updateNoopOk = false;
-    let updateDetail = "";
-
-    if (row) {
-      const updatePayload = {
-        title: row.title,
-      };
-
-      const attempts = [
-        { filter: "id_only" },
-        { filter: "id_user" },
-        { filter: "id_owner" },
-      ] as const;
-
-      for (const attempt of attempts) {
-        let query = supabase.from("items").update(updatePayload).eq("id", id);
-        if (attempt.filter === "id_user") query = query.eq("user_id", currentUser.id);
-        if (attempt.filter === "id_owner") query = query.eq("owner_id", currentUser.id);
-
-        const result = await query.select("id");
-
-        if (result.error) {
-          updateDetail = result.error.message;
-          if (isMissingColumnError(result.error)) {
-            continue;
-          }
-          continue;
-        }
-
-        if ((result.data || []).length > 0) {
-          updateNoopOk = true;
-          updateDetail = `No-op update works with ${attempt.filter}`;
-          break;
-        }
-
-        updateDetail = `No rows returned for ${attempt.filter}`;
-      }
-    } else {
-      updateDetail = "Skipped because listing row is not readable";
-    }
-
-    checks.push({
-      label: "Can update listing row",
-      ok: updateNoopOk,
-      detail: updateDetail,
-    });
-
-    setDiagnostics(checks);
-    setRunningDiagnostics(false);
   }
 
   const handleSubmit = async () => {
@@ -558,10 +528,10 @@ const ListItem = () => {
       const parsedPricePerDay = Number(pricePerDay);
       const parsedStandardShippingPrice = Number(standardShippingPrice);
       const parsedExpressShippingPrice = Number(expressShippingPrice);
-      const hasPersistableImageUrl = isPersistableItemImageUrl(imageUrl);
+      const hasPersistableImageUrl = images.some((image) => isPersistableItemImageUrl(image.persistedUrl));
 
       if (
-        (!imageFile && !hasPersistableImageUrl) ||
+        (images.length === 0 && !hasPersistableImageUrl) ||
         !title.trim() ||
         !area.trim() ||
         !category.trim() ||
@@ -594,22 +564,27 @@ const ListItem = () => {
         return;
       }
 
-      if (!imageFile && !hasPersistableImageUrl) {
+      if (images.length === 0 && !hasPersistableImageUrl) {
         toast({
           title: "Image required",
-          description: "Please reselect the item photo before saving.",
+          description: "Please add at least one photo before saving.",
           variant: "destructive",
         });
         return;
       }
 
-      let finalImageUrl = imageUrl;
+      const uploadedImages = await Promise.all(images.map(async (image) => {
+        if (!image.file) {
+          return image.persistedUrl;
+        }
 
-      if (imageFile) {
-        const filePath = buildStorageFilePath(user.id, imageFile);
+        setImages((current) => current.map((entry) => (
+          entry.id === image.id ? { ...entry, uploading: true } : entry
+        )));
 
+        const filePath = buildStorageFilePath(user.id, image.file);
         const { error: uploadError } = await withTimeout(
-          supabase.storage.from("items").upload(filePath, imageFile, {
+          supabase.storage.from("items").upload(filePath, image.file, {
             upsert: false,
             cacheControl: "3600",
           }),
@@ -618,14 +593,22 @@ const ListItem = () => {
         );
 
         if (uploadError) {
-          console.error(uploadError);
-          toast({ title: "Image upload failed", description: uploadError.message, variant: "destructive" });
-          return;
+          throw uploadError;
         }
 
         const { data } = supabase.storage.from("items").getPublicUrl(filePath);
-        finalImageUrl = data.publicUrl;
-      }
+        return data.publicUrl;
+      }));
+
+      setImages((current) => current.map((image, index) => ({
+        ...image,
+        file: null,
+        persistedUrl: uploadedImages[index] || image.persistedUrl,
+        uploading: false,
+      })));
+
+      const finalImageUrls = uploadedImages.filter(Boolean);
+      const finalImageUrl = finalImageUrls[0] || null;
 
       const basePayload = {
         title: title.trim(),
@@ -640,6 +623,7 @@ const ListItem = () => {
         express_shipping_price: parsedExpressShippingPrice,
         allows_pickup: allowsPickup,
         allows_dropoff: allowsDropoff,
+        image_urls: finalImageUrls,
       };
 
       if (isEditing) {
@@ -670,7 +654,7 @@ const ListItem = () => {
             sessionStorage.setItem(`snatchn-item-bust-${id}`, bust);
             window.dispatchEvent(
               new CustomEvent("snatchn:item-updated", {
-                detail: { id, image_url: finalImageUrl, bust },
+                detail: { id, image_url: finalImageUrl, image_urls: finalImageUrls, bust },
               }),
             );
           }
@@ -692,8 +676,8 @@ const ListItem = () => {
       } else {
         if (isFirstListing && !stripeConnected && !IS_STRIPE_TEST_MODE) {
           toast({
-            title: "Connect payouts first",
-            description: "Before your first listing goes live, connect Stripe so Snatch'n can pay you out safely.",
+            title: "Your bank account is connecting",
+            description: "Your bank account is connecting — please wait a moment and try again.",
             variant: "destructive",
           });
           setLoading(false);
@@ -748,22 +732,24 @@ const ListItem = () => {
         variant: "destructive",
       });
     } finally {
+      setImages((current) => current.map((image) => ({ ...image, uploading: false })));
       setLoading(false);
     }
   };
 
-  const imageSrc = imageFile
-    ? imageUrl
-    : getItemImageUrl(imageUrl, id, undefined);
+  const coverImage = images[0];
+  const coverImageSrc = coverImage
+    ? coverImage.previewUrl || getItemImageUrl(coverImage.persistedUrl, id, undefined)
+    : "";
 
   const validation: ValidationState = useMemo(() => {
     const parsedPricePerDay = Number(pricePerDay);
     const parsedStandardShippingPrice = Number(standardShippingPrice);
     const parsedExpressShippingPrice = Number(expressShippingPrice);
-    const hasPersistableImageUrl = isPersistableItemImageUrl(imageUrl);
+    const hasPersistableImageUrl = images.some((image) => isPersistableItemImageUrl(image.persistedUrl));
 
     return {
-      image: Boolean(imageFile || hasPersistableImageUrl),
+      image: Boolean(images.length > 0 || hasPersistableImageUrl),
       title: Boolean(title.trim()),
       area: Boolean(area.trim()),
       category: Boolean(category.trim()),
@@ -773,7 +759,7 @@ const ListItem = () => {
       standardShipping: Number.isFinite(parsedStandardShippingPrice) && parsedStandardShippingPrice >= 0,
       expressShipping: Number.isFinite(parsedExpressShippingPrice) && parsedExpressShippingPrice >= 0,
     };
-  }, [area, category, condition, description, expressShippingPrice, imageFile, imageUrl, pricePerDay, standardShippingPrice, title]);
+  }, [area, category, condition, description, expressShippingPrice, images, pricePerDay, standardShippingPrice, title]);
 
   const missingFieldMessages = useMemo(() => {
     const messages: string[] = [];
@@ -810,7 +796,8 @@ const ListItem = () => {
                 expressShippingPrice,
                 allowsPickup,
                 allowsDropoff,
-                imageUrl,
+                imageUrl: images[0]?.persistedUrl || "",
+                imageUrls: images.map((image) => image.persistedUrl).filter(Boolean),
                 updatedAt: Date.now(),
               };
               localStorage.setItem(draftKey, JSON.stringify(draft));
@@ -840,6 +827,33 @@ const ListItem = () => {
       <div className="space-y-3">
         {!isEditing && isFirstListing && (
           <div className="space-y-3">
+            {!IS_STRIPE_TEST_MODE && (
+              <div className="flex items-center justify-between rounded-2xl border border-border/50 bg-card px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <span className={`inline-block h-2.5 w-2.5 rounded-full ${stripeConnected ? "bg-emerald-500" : "bg-amber-500"}`} />
+                  <span className="text-sm font-medium text-foreground">
+                    {stripeConnected ? "Payouts connected" : "Not connected"}
+                  </span>
+                </div>
+                {!stripeConnected && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setRefreshingStripeStatus(true);
+                      try {
+                        await loadProfile();
+                      } finally {
+                        setRefreshingStripeStatus(false);
+                      }
+                    }}
+                    className="text-xs font-semibold text-primary disabled:opacity-60"
+                    disabled={refreshingStripeStatus}
+                  >
+                    {refreshingStripeStatus ? "Refreshing..." : "Tap to refresh"}
+                  </button>
+                )}
+              </div>
+            )}
             <StripeConnectBanner
               returnPath="/list"
               variant="inline"
@@ -860,23 +874,80 @@ const ListItem = () => {
           </div>
         )}
 
-        {imageUrl && <img src={imageSrc} alt="Preview" className="w-full max-w-xs rounded-xl" />}
-
         <input
+          ref={imageInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+          accept="image/*"
+          className="hidden"
           onChange={(e) => {
-            if (e.target.files && e.target.files[0]) {
-              handleImageSelect(e.target.files[0]);
-            }
+            void handleImageSelect(e.target.files);
+            e.target.value = "";
           }}
         />
-        <p className="text-[11px] text-muted-foreground">JPG, PNG, WEBP, HEIC. We optimize large images automatically.</p>
+        <div className="space-y-2">
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-sm font-semibold text-foreground">Add photos</h2>
+            <span className="text-sm text-muted-foreground">(Up to 6)</span>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {Array.from({ length: images.length >= maxImages ? maxImages : images.length + 1 }).map((_, index) => {
+              const image = images[index];
+              const imageSrc = image
+                ? image.previewUrl || getItemImageUrl(image.persistedUrl, id, undefined)
+                : "";
+
+              if (image) {
+                return (
+                  <div
+                    key={image.id}
+                    className="relative h-40 w-[120px] shrink-0 overflow-hidden rounded-2xl border border-border bg-card"
+                  >
+                    <img src={imageSrc} alt={`Listing photo ${index + 1}`} className="h-full w-full object-cover" />
+                    {index === 0 && (
+                      <span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white">
+                        Cover
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeImage(image.id)}
+                      className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white"
+                    >
+                      <X size={12} />
+                    </button>
+                    {image.uploading && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                        <Loader2 size={18} className="animate-spin text-white" />
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              return (
+                <button
+                  key={`empty-${index}`}
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  className="relative flex h-40 w-[120px] shrink-0 items-center justify-center rounded-2xl border-2 border-dashed border-border bg-card text-muted-foreground"
+                >
+                  {index === 0 && (
+                    <span className="absolute left-2 top-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-foreground">
+                      Cover
+                    </span>
+                  )}
+                  <Plus size={24} />
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-muted-foreground">Add up to 6 photos. JPG, PNG, WEBP, HEIC. We optimize large images automatically.</p>
+        </div>
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={handleGenerateSuggestions}
-            disabled={!imageUrl || generatingListing}
+            disabled={!coverImageSrc || generatingListing}
             className="h-10 px-4 rounded-xl border border-border/60 bg-card text-sm font-semibold disabled:opacity-50"
           >
             {generatingListing ? "Generating..." : "Generate listing details"}
@@ -1012,7 +1083,7 @@ const ListItem = () => {
 
       <button
         onClick={handleSubmit}
-        disabled={!canSubmit}
+        disabled={isEditing ? loading : !canSubmit}
         className="w-full h-12 bg-primary text-white rounded-xl font-semibold disabled:opacity-50 active:scale-[0.99] transition-all"
       >
         {generatingListing ? "Generating..." : loading ? "Saving..." : isEditing ? "Update Item" : "List Item"}
@@ -1023,50 +1094,6 @@ const ListItem = () => {
         </p>
       )}
 
-      {isEditing && isOwnerAdmin && (
-        <section className="rounded-2xl border border-border/60 bg-card/80 p-4">
-          <button
-            type="button"
-            onClick={() => setShowDiagnostics((prev) => !prev)}
-            className="w-full flex items-center justify-between"
-          >
-            <span className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
-              <Wrench size={14} /> Admin diagnostics
-            </span>
-            <ChevronDown size={16} className={`transition-transform ${showDiagnostics ? "rotate-180" : ""}`} />
-          </button>
-
-          {showDiagnostics && (
-            <div className="mt-3 space-y-3">
-              <p className="text-xs text-muted-foreground">
-                Runs safe checks for auth, RLS row updates, and storage access.
-              </p>
-              <button
-                type="button"
-                onClick={runDiagnostics}
-                disabled={runningDiagnostics}
-                className="h-9 px-3 rounded-lg border border-border text-xs font-semibold hover:bg-muted/50 disabled:opacity-60"
-              >
-                {runningDiagnostics ? "Running checks..." : "Run checks"}
-              </button>
-
-              {diagnostics.length > 0 && (
-                <div className="space-y-2">
-                  {diagnostics.map((check) => (
-                    <div
-                      key={check.label}
-                      className={`rounded-xl border px-3 py-2 ${check.ok ? "border-emerald-300/70 bg-emerald-50/50" : "border-rose-300/70 bg-rose-50/50"}`}
-                    >
-                      <p className="text-xs font-semibold text-foreground">{check.label}</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">{check.detail}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-      )}
     </div>
   );
 };

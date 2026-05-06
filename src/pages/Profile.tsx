@@ -1,6 +1,7 @@
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  BanknoteIcon,
   Bell,
   Camera,
   ChevronDown,
@@ -18,8 +19,10 @@ import { supabase } from "../lib/supabaseClient";
 import { getItemImageUrl } from "@/lib/images";
 import { uploadAvatar } from "@/lib/avatarUpload";
 import { usePageRefresh } from "@/hooks/usePageRefresh";
+import AvatarCropper from "@/components/AvatarCropper";
+import SnatchnWallet from "@/components/SnatchnWallet";
 
-type ProfileSection = "wardrobe" | "snatches" | "likes";
+type ProfileSection = "wardrobe" | "snatches" | "likes" | "wallet";
 
 function formatDate(value?: string) {
   if (!value) return "-";
@@ -88,6 +91,8 @@ export default function Profile() {
   const [mfaStatusMessage, setMfaStatusMessage] = useState("");
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState("");
+  const [cropSrc, setCropSrc] = useState<string>("");
+  const [pendingAvatarBlob, setPendingAvatarBlob] = useState<Blob | null>(null);
   const [stripeConnected, setStripeConnected] = useState(false);
   const [connectingStripe, setConnectingStripe] = useState(false);
   const [followsEnabled, setFollowsEnabled] = useState(true);
@@ -131,7 +136,9 @@ export default function Profile() {
       if (loadRequestIdRef.current !== requestId) return;
 
       const myProfileRow = profileResult.data;
-      setProfileAvatarUrl(String(myProfileRow?.avatar_url || currentUser.user_metadata?.avatar_url || ""));
+      const avatarFromProfile = myProfileRow?.avatar_url;
+      const avatarFromMeta = currentUser.user_metadata?.avatar_url || currentUser.user_metadata?.picture;
+      setProfileAvatarUrl(String(avatarFromProfile || avatarFromMeta || ""));
       setStripeConnected(Boolean(myProfileRow?.stripe_account_id || myProfileRow?.stripe_connect_account_id));
 
       const wardrobeByOwner = wardrobeByOwnerResult.data;
@@ -322,11 +329,22 @@ export default function Profile() {
     if (!file.type.startsWith("image/")) { alert("Please choose an image file."); event.target.value = ""; return; }
     const maxBytes = 12 * 1024 * 1024;
     if (file.size > maxBytes) { alert("Image is too large. Please use a file under 12MB."); event.target.value = ""; return; }
+    const reader = new FileReader();
+    reader.onload = (e) => setCropSrc(e.target?.result as string);
+    reader.readAsDataURL(file);
+    event.target.value = "";
+    return;
+  }
+
+  async function handleCropSave(blob: Blob) {
+    if (!user) return;
     function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
       return Promise.race([promise, new Promise<T>((_, reject) => window.setTimeout(() => reject(new Error(`${label} timed out. Please try again.`)), ms))]);
     }
     setUploadingAvatar(true);
+    setPendingAvatarBlob(blob);
     try {
+      const file = new File([blob], "avatar.jpg", { type: "image/jpeg" });
       const avatarUrl = await withTimeout(uploadAvatar(user.id, file), 30000, "Avatar upload");
       const { error: authError } = await withTimeout(supabase.auth.updateUser({ data: { avatar_url: avatarUrl } }), 15000, "Profile metadata update");
       if (authError) throw new Error(authError.message || "Unable to update profile image.");
@@ -343,9 +361,10 @@ export default function Profile() {
         delete profilePayload[col];
       }
       setProfileAvatarUrl(avatarUrl);
+      setCropSrc("");
       loadProfile();
     } catch (error: any) { alert(error?.message || "Unable to upload profile image."); }
-    finally { setUploadingAvatar(false); event.target.value = ""; }
+    finally { setUploadingAvatar(false); setPendingAvatarBlob(null); }
   }
 
   async function submitRating(booking: any) {
@@ -423,7 +442,7 @@ export default function Profile() {
 
   const username = user?.user_metadata?.username || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "You";
   const displayName = user?.user_metadata?.full_name || user?.user_metadata?.first_name || username;
-  const avatarUrl = profileAvatarUrl || user?.user_metadata?.avatar_url;
+  const avatarUrl = profileAvatarUrl || user?.user_metadata?.avatar_url || user?.user_metadata?.picture || "";
   const initials = String(displayName).charAt(0).toUpperCase();
   const location = user?.user_metadata?.suburb || user?.user_metadata?.city || "Sydney, AU";
 
@@ -431,6 +450,7 @@ export default function Profile() {
     { id: "wardrobe" as const, label: "Wardrobe", icon: Shirt, badge: incomingRequests.length },
     { id: "snatches" as const, label: "Snatches", icon: Sparkles, badge: approvedTripsCount },
     { id: "likes" as const, label: "Liked", icon: Heart, badge: 0 },
+    { id: "wallet" as const, label: "Wallet", icon: BanknoteIcon, badge: 0 },
   ];
 
   if (loading) {
@@ -451,33 +471,9 @@ export default function Profile() {
   return (
     <div className="app-shell bg-warm-gradient pb-28 page-transition">
 
-      {/* ── Cover strip ── */}
-      <div className="h-20 bg-gradient-to-r from-blush to-card relative">
-        <div className="absolute top-3 right-3 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => navigate("/?notifications=1")}
-            className="relative w-9 h-9 rounded-full bg-card/80 border border-border/60 flex items-center justify-center shadow-soft"
-          >
-            <Bell size={15} className="text-foreground" />
-            {incomingRequests.length > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] leading-4 font-semibold text-center">
-                {incomingRequests.length}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={logout}
-            className="w-9 h-9 rounded-full bg-card/80 border border-border/60 flex items-center justify-center shadow-soft"
-          >
-            <LogOut size={15} className="text-foreground" />
-          </button>
-        </div>
-      </div>
-
       {/* ── Hero section ── */}
       <div className="px-5 pb-4 bg-warm-gradient">
-        <div className="flex items-end justify-between -mt-8 mb-3">
+        <div className="flex items-end justify-between mb-3">
           {/* Avatar */}
           <button
             type="button"
@@ -501,10 +497,29 @@ export default function Profile() {
           {/* Action buttons */}
           <div className="flex gap-2 pb-1">
             <button
+              type="button"
+              onClick={() => navigate("/?notifications=1")}
+              className="relative w-9 h-9 rounded-full bg-card/80 border border-border/60 flex items-center justify-center shadow-soft"
+            >
+              <Bell size={15} className="text-foreground" />
+              {incomingRequests.length > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] leading-4 font-semibold text-center">
+                  {incomingRequests.length}
+                </span>
+              )}
+            </button>
+            <button
               onClick={() => navigate("/list")}
               className="h-8 px-4 rounded-full bg-primary text-primary-foreground text-xs font-bold shadow-soft"
             >
               + List item
+            </button>
+            <button
+              type="button"
+              onClick={logout}
+              className="w-9 h-9 rounded-full bg-card/80 border border-border/60 flex items-center justify-center shadow-soft"
+            >
+              <LogOut size={15} className="text-foreground" />
             </button>
           </div>
         </div>
@@ -531,7 +546,7 @@ export default function Profile() {
           </button>
         )}
 
-        {uploadingAvatar && <p className="text-xs text-primary mt-1">Uploading photo...</p>}
+        {(uploadingAvatar || pendingAvatarBlob) && <p className="text-xs text-primary mt-1">Uploading photo...</p>}
         {refreshing && <p className="text-xs text-muted-foreground mt-1">Refreshing...</p>}
 
         {/* Stats row */}
@@ -590,7 +605,7 @@ export default function Profile() {
       </div>
 
       {/* ── Tab content ── */}
-      <div className="px-5 pt-4 space-y-5">
+      <div className="px-5 pt-6 mt-1 space-y-5">
 
         {/* WARDROBE TAB */}
         {activeSection === "wardrobe" && (
@@ -865,6 +880,16 @@ export default function Profile() {
           </section>
         )}
 
+        {activeSection === "wallet" && user?.id && (
+          <section className="space-y-3">
+            <SnatchnWallet
+              userId={user.id}
+              stripeConnected={stripeConnected}
+              onConnectStripe={connectStripePayouts}
+            />
+          </section>
+        )}
+
         {/* ── Account settings (collapsed) ── */}
         <section className="mt-2">
           <button
@@ -953,6 +978,7 @@ export default function Profile() {
         </section>
 
       </div>
+      {cropSrc && <AvatarCropper imageSrc={cropSrc} onSave={handleCropSave} onCancel={() => setCropSrc("")} />}
     </div>
   );
 }

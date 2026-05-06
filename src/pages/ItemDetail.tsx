@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { Suspense, lazy, useState, useEffect, useCallback } from "react";
+import { Suspense, lazy, useState, useEffect, useCallback, useRef } from "react";
 import { ArrowLeft, MessageCircle, ShoppingBag } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { getItemImageUrl } from "@/lib/images";
@@ -62,6 +62,8 @@ const ItemDetail = () => {
   const [similarItems, setSimilarItems] = useState<any[]>([]);
   const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [similarSearched, setSimilarSearched] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const carouselRef = useRef<HTMLDivElement | null>(null);
 
   // Fetch item
   const loadCurrentUser = useCallback(async () => {
@@ -131,6 +133,11 @@ const ItemDetail = () => {
   const blockedDates = bookedRanges.flatMap((range) =>
     getDatesBetween(range.start_date, range.end_date),
   );
+  const images: string[] = Array.isArray(item?.image_urls) && item.image_urls.length > 0
+    ? item.image_urls
+    : item?.image_url
+      ? [item.image_url]
+      : [];
 
   const handleFindSimilar = async () => {
     if (!item?.id) return;
@@ -279,19 +286,54 @@ const ItemDetail = () => {
   const ownerId = item.owner_id || item.user_id;
   const isOwner = Boolean(ownerId && currentUserId === ownerId);
 
-  return (
-    <div className="app-shell p-5 space-y-5">
+  try {
+    return (
+      <div className="app-shell p-5 space-y-5">
       {/* Back Button */}
       <button onClick={() => navigate(-1)}>
         <ArrowLeft size={20} />
       </button>
 
       {/* Image */}
-      <img
-        src={getItemImageUrl(item.image_url, item.id, item.updated_at || item.created_at)}
-        alt={item.title}
-        className="w-full aspect-[3/4] object-cover rounded-2xl"
-      />
+      {images.length === 0 ? (
+        <div className="w-full aspect-[3/4] rounded-2xl bg-muted" />
+      ) : images.length === 1 ? (
+        <img
+          src={getItemImageUrl(images[0], item.id, item.updated_at || item.created_at)}
+          alt={item.title}
+          className="w-full aspect-[3/4] object-cover rounded-2xl"
+        />
+      ) : (
+        <div className="space-y-3">
+          <div
+            ref={carouselRef}
+            onScroll={(event) => {
+              const node = event.currentTarget;
+              if (!node.clientWidth) return;
+              const nextIndex = Math.round(node.scrollLeft / node.clientWidth);
+              setActiveImageIndex(Math.max(0, Math.min(images.length - 1, nextIndex)));
+            }}
+            className="flex overflow-x-auto snap-x snap-mandatory rounded-2xl"
+          >
+            {images.map((src, index) => (
+              <img
+                key={`${src}-${index}`}
+                src={getItemImageUrl(src, item.id, item.updated_at || item.created_at)}
+                alt={`${item.title} photo ${index + 1}`}
+                className="w-full shrink-0 snap-start aspect-[3/4] object-cover"
+              />
+            ))}
+          </div>
+          <div className="flex items-center justify-center gap-2">
+            {images.map((_, index) => (
+              <span
+                key={`dot-${index}`}
+                className={`h-2 w-2 rounded-full ${index === activeImageIndex ? "bg-foreground" : "bg-foreground/25"}`}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Title */}
       <div>
@@ -432,8 +474,28 @@ const ItemDetail = () => {
           )}
         </section>
       )}
-    </div>
-  );
+      </div>
+    );
+  } catch (error) {
+    console.error("ItemDetail render error", error);
+    return (
+      <div className="app-shell p-5 space-y-4">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
+          <p className="text-base font-semibold text-red-900">This item could not be displayed</p>
+          <p className="mt-1 text-sm text-red-700">
+            There was a problem rendering this listing. Please try again.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => navigate("/discover")}
+          className="h-10 px-4 rounded-xl border border-border/60 bg-card text-sm font-semibold"
+        >
+          Back to discover
+        </button>
+      </div>
+    );
+  }
 };
 
 export default ItemDetail;
