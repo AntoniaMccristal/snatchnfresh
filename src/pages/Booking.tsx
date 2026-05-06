@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   ArrowLeft,
@@ -18,6 +18,35 @@ import { supabase } from "../lib/supabaseClient";
 import { usePageRefresh } from "@/hooks/usePageRefresh";
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: string }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: "" };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error: String(error?.message || error) };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="app-shell p-6 space-y-4">
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+            <p className="text-sm font-bold text-red-900">Something went wrong</p>
+            <p className="text-xs text-red-700 mt-1">{this.state.error}</p>
+          </div>
+          <button onClick={() => window.history.back()} className="h-10 px-4 rounded-xl border border-border text-sm">
+            Go back
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 // ── Payment form ──────────────────────────────────────────────────────────────
 
@@ -388,10 +417,9 @@ const Booking = () => {
   }
 
   // ── Main booking UI ────────────────────────────────────────────────────────
-  try {
-    return (
-      <div className="app-shell bg-warm-gradient pb-10 page-transition">
-        <div className="relative px-5 pt-[max(0.75rem,env(safe-area-inset-top))] space-y-5">
+  return (
+    <div className="app-shell bg-warm-gradient pb-10 page-transition">
+      <div className="relative px-5 pt-[max(0.75rem,env(safe-area-inset-top))] space-y-5">
 
         {/* Back button */}
         <button
@@ -599,29 +627,15 @@ const Booking = () => {
           </Elements>
         )}
 
-        </div>
       </div>
-    );
-  } catch (error) {
-    console.error("Booking render error", error);
-    return (
-      <div className="app-shell p-6 space-y-4">
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
-          <p className="text-base font-semibold text-red-900">This booking could not be displayed</p>
-          <p className="mt-1 text-sm text-red-700">
-            There was a problem rendering checkout. Please go back and try again.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="h-10 px-4 rounded-xl border border-border/60 bg-card text-sm font-semibold"
-        >
-          Go back
-        </button>
-      </div>
-    );
-  }
+    </div>
+  );
 };
 
-export default Booking;
+export default function BookingWithBoundary() {
+  return (
+    <ErrorBoundary>
+      <Booking />
+    </ErrorBoundary>
+  );
+}
