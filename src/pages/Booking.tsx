@@ -599,7 +599,7 @@ const Booking = () => {
             stripe={stripePromise}
             options={{
               clientSecret,
-              paymentMethodTypes: ["card", "apple_pay", "google_pay"],
+              paymentMethodTypes: ["card"],
               appearance: {
                 theme: "stripe",
                 variables: {
