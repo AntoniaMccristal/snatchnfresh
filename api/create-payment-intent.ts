@@ -280,7 +280,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
 
     const { bookingId, error: bookingInsertError } = await insertBookingWithFallback(
-      supabaseUserScopedClient,
+      supabaseAdmin,
       bookingPayload,
     );
 
