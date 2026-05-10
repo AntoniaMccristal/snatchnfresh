@@ -77,16 +77,39 @@ function PaymentForm({
       return;
     }
 
-    const { error: confirmError } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/payment-success?bookingId=${bookingId}`,
-      },
-      redirect: "if_required",
-    });
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Payment timed out. The lender may need to complete their Stripe verification before payments can be accepted. Please try again later.")), 30000),
+    );
+
+    let confirmError: any = null;
+
+    try {
+      const result = await Promise.race([
+        stripe.confirmPayment({
+          elements,
+          confirmParams: {
+            return_url: `${window.location.origin}/payment-success?bookingId=${bookingId}`,
+          },
+          redirect: "if_required",
+        }),
+        timeoutPromise,
+      ]);
+      confirmError = result.error;
+    } catch (error: any) {
+      setError(error?.message || "Payment failed. Please try again.");
+      setPaying(false);
+      return;
+    }
 
     if (confirmError) {
-      setError(confirmError.message || "Payment failed. Please try again.");
+      let userMessage = confirmError.message || "Payment failed. Please try again.";
+      if (confirmError.code === "account_invalid" || confirmError.code === "transfer_destination_account_restricted") {
+        userMessage = "This lender hasn't completed their payout setup yet. Please message them to let them know, and try again once they've verified their account.";
+      }
+      if (confirmError.code === "payment_intent_authentication_failure") {
+        userMessage = "Payment authentication failed. Please check your card details and try again.";
+      }
+      setError(userMessage);
       setPaying(false);
       return;
     }
