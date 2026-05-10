@@ -17,7 +17,8 @@ import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-
 import { supabase } from "../lib/supabaseClient";
 import { usePageRefresh } from "@/hooks/usePageRefresh";
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+const stripePublishableKey = String(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "").trim();
+const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: string }> {
   constructor(props: { children: React.ReactNode }) {
@@ -594,12 +595,11 @@ const Booking = () => {
         )}
 
         {/* ── Step 2: Stripe Elements card form ── */}
-        {paymentReady && clientSecret && (
+        {paymentReady && clientSecret && stripePromise && (
           <Elements
             stripe={stripePromise}
             options={{
               clientSecret,
-              paymentMethodTypes: ["card"],
               appearance: {
                 theme: "stripe",
                 variables: {
@@ -625,6 +625,16 @@ const Booking = () => {
               />
             </div>
           </Elements>
+        )}
+
+        {paymentReady && clientSecret && !stripePromise && (
+          <GenericError
+            message="Payment is unavailable right now. Please try again in a moment."
+            onBack={() => {
+              setPaymentReady(false);
+              setErrorType(null);
+            }}
+          />
         )}
 
       </div>
