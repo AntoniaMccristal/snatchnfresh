@@ -1,5 +1,5 @@
+import React, { Suspense, lazy, useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Suspense, lazy, useState, useEffect, useCallback, useRef } from "react";
 import { ArrowLeft, MessageCircle, ShoppingBag } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { getItemImageUrl } from "@/lib/images";
@@ -44,6 +44,39 @@ function DatePickerFallback({ placeholder }: { placeholder: string }) {
       {placeholder}
     </div>
   );
+}
+
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: string }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: "" };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error: String(error?.message || error) };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="app-shell p-5 space-y-4">
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
+            <p className="text-base font-semibold text-red-900">This item could not be displayed</p>
+            <p className="mt-1 text-sm text-red-700">{this.state.error}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => window.history.back()}
+            className="h-10 px-4 rounded-xl border border-border/60 bg-card text-sm font-semibold"
+          >
+            Go back
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
 }
 
 const ItemDetail = () => {
@@ -286,8 +319,7 @@ const ItemDetail = () => {
   const ownerId = item.owner_id || item.user_id;
   const isOwner = Boolean(ownerId && currentUserId === ownerId);
 
-  try {
-    return (
+  return (
       <div className="app-shell p-5 space-y-5">
       {/* Back Button */}
       <button onClick={() => navigate(-1)}>
@@ -476,26 +508,12 @@ const ItemDetail = () => {
       )}
       </div>
     );
-  } catch (error) {
-    console.error("ItemDetail render error", error);
-    return (
-      <div className="app-shell p-5 space-y-4">
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
-          <p className="text-base font-semibold text-red-900">This item could not be displayed</p>
-          <p className="mt-1 text-sm text-red-700">
-            There was a problem rendering this listing. Please try again.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => navigate("/discover")}
-          className="h-10 px-4 rounded-xl border border-border/60 bg-card text-sm font-semibold"
-        >
-          Back to discover
-        </button>
-      </div>
-    );
-  }
 };
 
-export default ItemDetail;
+export default function ItemDetailWithBoundary() {
+  return (
+    <ErrorBoundary>
+      <ItemDetail />
+    </ErrorBoundary>
+  );
+}
