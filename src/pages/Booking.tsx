@@ -89,6 +89,13 @@ function PaymentForm({
           elements,
           confirmParams: {
             return_url: `${window.location.origin}/payment-success?bookingId=${bookingId}`,
+            payment_method_data: {
+              billing_details: {
+                address: {
+                  country: "AU",
+                },
+              },
+            },
           },
           redirect: "if_required",
         }),
@@ -132,7 +139,7 @@ function PaymentForm({
             ))}
           </div>
         </div>
-        <PaymentElement options={{ layout: "tabs", fields: { billingDetails: { address: "never" } } }} />
+        <PaymentElement options={{ layout: "tabs" }} />
       </div>
 
       {error && (
