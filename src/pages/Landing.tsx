@@ -53,9 +53,7 @@ export default function Landing() {
       {/* ── Nav ── */}
       <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, background: "hsl(var(--background) / 0.92)", backdropFilter: "blur(12px)", borderBottom: "0.5px solid rgba(26,10,46,0.08)", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 60 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 32, height: 32, background: "#1a0a2e", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ color: "#f4c5d0", fontSize: 14, fontWeight: 900 }}>S</span>
-          </div>
+          <img src="/pwa-192x192.png" alt="Snatch'n" style={{ width: 32, height: 32, borderRadius: 10, objectFit: "cover" }} />
           <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.5px" }}>Snatch'n</span>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -290,9 +288,7 @@ export default function Landing() {
       <footer style={{ background: "hsl(var(--background))", borderTop: "0.5px solid rgba(26,10,46,0.08)", padding: "32px 24px" }}>
         <div style={{ maxWidth: 1000, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 28, height: 28, background: "#1a0a2e", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ color: "#f4c5d0", fontSize: 12, fontWeight: 900 }}>S</span>
-            </div>
+            <img src="/pwa-192x192.png" alt="Snatch'n" style={{ width: 28, height: 28, borderRadius: 8, objectFit: "cover" }} />
             <span style={{ fontSize: 14, fontWeight: 700 }}>Snatch'n</span>
             <span style={{ fontSize: 12, color: "#9b8ea8" }}>· Sydney, AU</span>
           </div>
