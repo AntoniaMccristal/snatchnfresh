@@ -144,6 +144,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           card_payments: { requested: true },
           transfers: { requested: true },
         },
+        tos_acceptance: {
+          service_agreement: "recipient",
+        },
 
         settings: {
           payouts: {
