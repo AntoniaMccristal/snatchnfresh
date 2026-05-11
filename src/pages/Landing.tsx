@@ -48,7 +48,7 @@ export default function Landing() {
   }, []);
 
   return (
-    <div style={{ fontFamily: "'DM Sans', -apple-system, sans-serif", background: "hsl(var(--background))", color: "#1a0a2e", overflowX: "hidden" }}>
+    <div style={{ fontFamily: "'DM Sans', sans-serif", background: "hsl(var(--background))", color: "#1a0a2e", overflowX: "hidden" }}>
 
       {/* ── Nav ── */}
       <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, background: "hsl(var(--background) / 0.92)", backdropFilter: "blur(12px)", borderBottom: "0.5px solid rgba(26,10,46,0.08)", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 60 }}>
@@ -82,7 +82,7 @@ export default function Landing() {
             🌿 Sustainable fashion · Sydney, AU
           </div>
 
-          <h1 style={{ fontSize: "clamp(40px,7vw,80px)", fontWeight: 800, letterSpacing: "-2px", lineHeight: 1.05, margin: "0 auto 20px", maxWidth: 800, padding: "0 24px" }}>
+          <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(40px,7vw,80px)", fontWeight: 800, letterSpacing: "-2px", lineHeight: 1.05, margin: "0 auto 20px", maxWidth: 800, padding: "0 24px" }}>
             Rent fashion from<br />
             <span style={{ color: "#9d6e8a", fontStyle: "italic" }}>your neighbours.</span>
           </h1>
@@ -163,7 +163,7 @@ export default function Landing() {
       {/* ── How it works ── */}
       <section id="how" style={{ padding: "80px 24px", maxWidth: 1000, margin: "0 auto" }}>
         <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#9d6e8a", marginBottom: 12 }}>How it works</p>
-        <h2 style={{ fontSize: "clamp(28px,4vw,44px)", fontWeight: 800, letterSpacing: "-1.5px", margin: "0 0 56px", lineHeight: 1.1 }}>
+        <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(28px,4vw,44px)", fontWeight: 800, letterSpacing: "-1.5px", margin: "0 0 56px", lineHeight: 1.1 }}>
           Simple as borrowing<br />from a friend.
         </h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 24 }}>
@@ -185,7 +185,7 @@ export default function Landing() {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
             <div>
               <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#9d6e8a", marginBottom: 8 }}>Live on Snatch'n</p>
-              <h2 style={{ fontSize: "clamp(24px,3vw,36px)", fontWeight: 800, letterSpacing: "-1px", margin: 0 }}>Browse real wardrobes</h2>
+              <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(24px,3vw,36px)", fontWeight: 800, letterSpacing: "-1px", margin: 0 }}>Browse real wardrobes</h2>
             </div>
             <button onClick={() => navigate(user ? "/" : "/auth")} style={{ height: 40, padding: "0 20px", borderRadius: 99, border: "1.5px solid #1a0a2e", background: "transparent", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
               See all →
@@ -214,7 +214,7 @@ export default function Landing() {
       <section style={{ background: "hsl(var(--sage-light, 120 15% 90%))", padding: "80px 24px" }}>
         <div style={{ maxWidth: 1000, margin: "0 auto" }}>
           <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#9d6e8a", marginBottom: 12 }}>Early users</p>
-          <h2 style={{ fontSize: "clamp(24px,3vw,36px)", fontWeight: 800, letterSpacing: "-1px", margin: "0 0 40px" }}>People love it</h2>
+          <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(24px,3vw,36px)", fontWeight: 800, letterSpacing: "-1px", margin: "0 0 40px" }}>People love it</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
             {TESTIMONIALS.map((t) => (
               <div key={t.name} style={{ background: "#fff", borderRadius: 20, padding: "24px", border: "0.5px solid rgba(26,10,46,0.07)" }}>
@@ -239,7 +239,7 @@ export default function Landing() {
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#d4e0c4", borderRadius: 99, padding: "4px 12px", fontSize: 11, fontWeight: 700, color: "#1a0a2e", marginBottom: 16 }}>
               For rental businesses
             </div>
-            <h2 style={{ fontSize: "clamp(26px,3.5vw,40px)", fontWeight: 800, letterSpacing: "-1.5px", lineHeight: 1.1, margin: "0 0 16px" }}>
+            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(26px,3.5vw,40px)", fontWeight: 800, letterSpacing: "-1.5px", lineHeight: 1.1, margin: "0 0 16px" }}>
               Already renting?<br />
               <span style={{ color: "#9d6e8a" }}>List on Snatch'n.</span>
             </h2>
@@ -269,7 +269,7 @@ export default function Landing() {
       <section style={{ background: "#5c6b47", padding: "72px 24px", textAlign: "center" }}>
         <div style={{ maxWidth: 600, margin: "0 auto" }}>
           <p style={{ fontSize: 40, marginBottom: 16 }}>🌿</p>
-          <h2 style={{ fontSize: "clamp(26px,4vw,42px)", fontWeight: 800, color: "#fff", letterSpacing: "-1.5px", margin: "0 0 16px", lineHeight: 1.15 }}>
+          <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(26px,4vw,42px)", fontWeight: 800, color: "#fff", letterSpacing: "-1.5px", margin: "0 0 16px", lineHeight: 1.15 }}>
             Every rental keeps a garment out of landfill.
           </h2>
           <p style={{ fontSize: 15, color: "rgba(255,255,255,0.55)", margin: "0 0 36px", lineHeight: 1.7 }}>
