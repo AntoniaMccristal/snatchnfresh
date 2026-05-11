@@ -1,6 +1,8 @@
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { supabase } from "./lib/supabaseClient";
 const Index = lazy(() => import("./pages/Index"));
+const Landing = lazy(() => import("./pages/Landing"));
 const Profile = lazy(() => import("./pages/Profile"));
 const ListItem = lazy(() => import("./pages/ListItem"));
 const ItemDetail = lazy(() => import("./pages/ItemDetail"));
@@ -47,6 +49,51 @@ function RouteFallback() {
   );
 }
 
+function HomeRoute() {
+  const [loading, setLoading] = useState(true);
+  const [authenticated, setAuthenticated] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const syncSession = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!mounted) return;
+        setAuthenticated(Boolean(session));
+      } catch (error) {
+        console.error("Home route session check failed", error);
+        if (!mounted) return;
+        setAuthenticated(false);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    void syncSession();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
+      setAuthenticated(Boolean(session));
+      setLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  if (loading) {
+    return <RouteFallback />;
+  }
+
+  return authenticated ? <Index /> : <Landing />;
+}
+
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const splashTimerRef = useRef<number | null>(null);
@@ -83,7 +130,7 @@ export default function App() {
       <div style={{ paddingBottom: "80px" }}>
         <Suspense fallback={<RouteFallback />}>
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<HomeRoute />} />
             <Route path="/discover" element={<Discover />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/auth/mfa" element={<AuthMfa />} />
