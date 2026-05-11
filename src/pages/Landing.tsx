@@ -12,10 +12,10 @@ const HOW_STEPS = [
 ];
 
 const FOR_BUSINESS = [
-  { icon: "📦", title: "List your inventory", desc: "Upload your pieces in minutes. No tech skills needed." },
-  { icon: "💸", title: "Keep 90% of every rental", desc: "We take 10%. You keep the rest, paid directly to your bank." },
-  { icon: "🔒", title: "Payments held until return", desc: "Money is held securely until the item is confirmed back safe." },
-  { icon: "📱", title: "Manage everything in-app", desc: "Approve bookings, message renters, track returns — all in one place." },
+  { icon: "", title: "List your inventory", desc: "Upload your pieces in minutes. No tech skills needed." },
+  { icon: "", title: "Keep 90% of every rental", desc: "We take 10%. You keep the rest, paid directly to your bank." },
+  { icon: "", title: "Payments held until return", desc: "Money is held securely until the item is confirmed back safe." },
+  { icon: "", title: "Manage everything in-app", desc: "Approve bookings, message renters, track returns — all in one place." },
 ];
 
 const TESTIMONIALS = [
@@ -79,7 +79,7 @@ export default function Landing() {
 
         <div ref={heroRef} style={{ position: "relative", zIndex: 1 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#fff", border: "0.5px solid rgba(26,10,46,0.12)", borderRadius: 99, padding: "5px 14px", fontSize: 12, fontWeight: 600, color: "#6b5f7a", marginBottom: 24 }}>
-            🌿 Sustainable fashion · Sydney, AU
+            Sustainable fashion · Sydney, AU
           </div>
 
           <h1 style={{ fontSize: "clamp(40px,7vw,80px)", fontWeight: 800, letterSpacing: "-2px", lineHeight: 1.05, margin: "0 auto 20px", maxWidth: 800, padding: "0 24px" }}>
@@ -151,7 +151,7 @@ export default function Landing() {
           { num: "90%", label: "goes to the lender" },
           { num: "$0", label: "to list an item" },
           { num: "100%", label: "secure payments" },
-          { num: "🌿", label: "sustainable fashion" },
+          { num: "", label: "sustainable fashion" },
         ].map((s, i) => (
           <div key={i} style={{ flex: "1 1 160px", textAlign: "center", padding: "12px 24px", borderRight: i < 3 ? "0.5px solid rgba(255,255,255,0.1)" : "none" }}>
             <p style={{ fontSize: 28, fontWeight: 800, color: "#f4c5d0", margin: "0 0 4px", letterSpacing: "-1px" }}>{s.num}</p>
@@ -268,7 +268,6 @@ export default function Landing() {
       {/* ── Sustainability ── */}
       <section style={{ background: "#5c6b47", padding: "72px 24px", textAlign: "center" }}>
         <div style={{ maxWidth: 600, margin: "0 auto" }}>
-          <p style={{ fontSize: 40, marginBottom: 16 }}>🌿</p>
           <h2 style={{ fontSize: "clamp(26px,4vw,42px)", fontWeight: 800, color: "#fff", letterSpacing: "-1.5px", margin: "0 0 16px", lineHeight: 1.15 }}>
             Every rental keeps a garment out of landfill.
           </h2>
