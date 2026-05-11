@@ -319,6 +319,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       bookingId,
       {
         stripe_payment_intent_id: paymentIntent.id,
+        paid_at: new Date().toISOString(),
+        status: "paid",
         updated_at: new Date().toISOString(),
       },
     );
