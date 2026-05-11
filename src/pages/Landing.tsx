@@ -48,10 +48,10 @@ export default function Landing() {
   }, []);
 
   return (
-    <div style={{ fontFamily: "'DM Sans', -apple-system, sans-serif", background: "#faf8f5", color: "#1a0a2e", overflowX: "hidden" }}>
+    <div style={{ fontFamily: "'DM Sans', -apple-system, sans-serif", background: "hsl(var(--background))", color: "#1a0a2e", overflowX: "hidden" }}>
 
       {/* ── Nav ── */}
-      <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, background: "rgba(250,248,245,0.92)", backdropFilter: "blur(12px)", borderBottom: "0.5px solid rgba(26,10,46,0.08)", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 60 }}>
+      <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, background: "hsl(var(--background) / 0.92)", backdropFilter: "blur(12px)", borderBottom: "0.5px solid rgba(26,10,46,0.08)", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 60 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 32, height: 32, background: "#1a0a2e", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <span style={{ color: "#f4c5d0", fontSize: 14, fontWeight: 900 }}>S</span>
@@ -77,7 +77,7 @@ export default function Landing() {
       <section style={{ paddingTop: 120, paddingBottom: 80, textAlign: "center", position: "relative", overflow: "hidden" }}>
         {/* Background blobs */}
         <div style={{ position: "absolute", top: -60, right: -80, width: 400, height: 400, borderRadius: "50%", background: "rgba(244,197,208,0.35)", filter: "blur(80px)", pointerEvents: "none" }} />
-        <div style={{ position: "absolute", bottom: -40, left: -60, width: 300, height: 300, borderRadius: "50%", background: "rgba(200,185,230,0.3)", filter: "blur(60px)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: -40, left: -60, width: 300, height: 300, borderRadius: "50%", background: "rgba(180,200,150,0.3)", filter: "blur(60px)", pointerEvents: "none" }} />
 
         <div ref={heroRef} style={{ position: "relative", zIndex: 1 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#fff", border: "0.5px solid rgba(26,10,46,0.12)", borderRadius: 99, padding: "5px 14px", fontSize: 12, fontWeight: 600, color: "#6b5f7a", marginBottom: 24 }}>
@@ -148,7 +148,7 @@ export default function Landing() {
       </section>
 
       {/* ── Stats strip ── */}
-      <section style={{ background: "#1a0a2e", padding: "32px 24px", display: "flex", gap: 0, justifyContent: "center", flexWrap: "wrap" }}>
+      <section style={{ background: "#5c6b47", padding: "32px 24px", display: "flex", gap: 0, justifyContent: "center", flexWrap: "wrap" }}>
         {[
           { num: "90%", label: "goes to the lender" },
           { num: "$0", label: "to list an item" },
@@ -169,9 +169,9 @@ export default function Landing() {
           Simple as borrowing<br />from a friend.
         </h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 24 }}>
-          {HOW_STEPS.map((step) => (
+          {HOW_STEPS.map((step, index) => (
             <div key={step.num} style={{ background: "#fff", borderRadius: 24, padding: "28px 24px", border: "0.5px solid rgba(26,10,46,0.08)" }}>
-              <div style={{ width: 40, height: 40, borderRadius: 12, background: "#f4c5d0", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: index % 2 === 1 ? "#d4e0c4" : "#f4c5d0", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
                 <span style={{ fontSize: 13, fontWeight: 800, color: "#1a0a2e" }}>{step.num}</span>
               </div>
               <p style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px", letterSpacing: "-0.3px" }}>{step.title}</p>
@@ -213,7 +213,7 @@ export default function Landing() {
       )}
 
       {/* ── Testimonials ── */}
-      <section style={{ background: "#f0ebf4", padding: "80px 24px" }}>
+      <section style={{ background: "hsl(var(--sage-light, 120 15% 90%))", padding: "80px 24px" }}>
         <div style={{ maxWidth: 1000, margin: "0 auto" }}>
           <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#9d6e8a", marginBottom: 12 }}>Early users</p>
           <h2 style={{ fontSize: "clamp(24px,3vw,36px)", fontWeight: 800, letterSpacing: "-1px", margin: "0 0 40px" }}>People love it</h2>
@@ -238,7 +238,7 @@ export default function Landing() {
       <section id="business" style={{ padding: "80px 24px", maxWidth: 1000, margin: "0 auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "center" }}>
           <div>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f4c5d0", borderRadius: 99, padding: "4px 12px", fontSize: 11, fontWeight: 700, color: "#1a0a2e", marginBottom: 16 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#d4e0c4", borderRadius: 99, padding: "4px 12px", fontSize: 11, fontWeight: 700, color: "#1a0a2e", marginBottom: 16 }}>
               For rental businesses
             </div>
             <h2 style={{ fontSize: "clamp(26px,3.5vw,40px)", fontWeight: 800, letterSpacing: "-1.5px", lineHeight: 1.1, margin: "0 0 16px" }}>
@@ -268,7 +268,7 @@ export default function Landing() {
       </section>
 
       {/* ── Sustainability ── */}
-      <section style={{ background: "#1a0a2e", padding: "72px 24px", textAlign: "center" }}>
+      <section style={{ background: "#5c6b47", padding: "72px 24px", textAlign: "center" }}>
         <div style={{ maxWidth: 600, margin: "0 auto" }}>
           <p style={{ fontSize: 40, marginBottom: 16 }}>🌿</p>
           <h2 style={{ fontSize: "clamp(26px,4vw,42px)", fontWeight: 800, color: "#fff", letterSpacing: "-1.5px", margin: "0 0 16px", lineHeight: 1.15 }}>
@@ -287,7 +287,7 @@ export default function Landing() {
       </section>
 
       {/* ── Footer ── */}
-      <footer style={{ background: "#faf8f5", borderTop: "0.5px solid rgba(26,10,46,0.08)", padding: "32px 24px" }}>
+      <footer style={{ background: "hsl(var(--background))", borderTop: "0.5px solid rgba(26,10,46,0.08)", padding: "32px 24px" }}>
         <div style={{ maxWidth: 1000, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 28, height: 28, background: "#1a0a2e", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
