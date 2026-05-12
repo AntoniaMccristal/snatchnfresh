@@ -4,6 +4,7 @@ import { supabase } from "./lib/supabaseClient";
 const Index = lazy(() => import("./pages/Index"));
 const Landing = lazy(() => import("./pages/Landing"));
 const Profile = lazy(() => import("./pages/Profile"));
+const EditProfile = lazy(() => import("./pages/EditProfile"));
 const ListItem = lazy(() => import("./pages/ListItem"));
 const ItemDetail = lazy(() => import("./pages/ItemDetail"));
 const Booking = lazy(() => import("./pages/Booking"));
@@ -156,6 +157,14 @@ export default function App() {
               element={
                 <ProtectedRoute requireOnboarding>
                   <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/edit-profile"
+              element={
+                <ProtectedRoute requireOnboarding>
+                  <EditProfile />
                 </ProtectedRoute>
               }
             />

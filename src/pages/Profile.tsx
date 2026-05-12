@@ -515,6 +515,12 @@ export default function Profile() {
               + List item
             </button>
             <button
+              onClick={() => navigate("/edit-profile")}
+              className="h-8 px-4 rounded-full bg-card border border-border/60 text-xs font-bold text-foreground shadow-soft"
+            >
+              Edit profile
+            </button>
+            <button
               type="button"
               onClick={logout}
               className="w-9 h-9 rounded-full bg-card/80 border border-border/60 flex items-center justify-center shadow-soft"
