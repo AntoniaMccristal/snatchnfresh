@@ -173,6 +173,7 @@ export default function EditProfile() {
       if (authError) throw new Error(authError.message || "Could not update account metadata.");
 
       setMessage("Profile updated successfully.");
+      setTimeout(() => navigate("/profile"), 2000);
     } catch (saveError: any) {
       setError(saveError?.message || "Unable to save profile.");
     } finally {
