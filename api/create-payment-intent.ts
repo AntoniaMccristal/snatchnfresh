@@ -5,6 +5,15 @@ import Stripe from "stripe";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 const COMMISSION_RATE = 0.05;
 
+function getAppOrigin(req: VercelRequest) {
+  const explicitOrigin = req.headers.origin;
+  if (explicitOrigin) return explicitOrigin;
+  const host = String(req.headers["x-forwarded-host"] || req.headers.host || "");
+  const proto = String(req.headers["x-forwarded-proto"] || "https");
+  if (!host) return "http://localhost:8080";
+  return `${proto}://${host}`;
+}
+
 function getMissingColumnFromError(error: any): string | null {
   const message = String(error?.message || "");
   const schemaCacheMatch = message.match(/find the ['"]([a-zA-Z0-9_]+)['"] column/i);
@@ -330,6 +339,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({
         error: bookingUpdateError?.message || "Could not update payment metadata for booking.",
       });
+    }
+
+    try {
+      const renterName =
+        String(
+          user.user_metadata?.full_name ||
+          user.user_metadata?.first_name ||
+          user.email?.split("@")[0] ||
+          "Someone",
+        ).trim() || "Someone";
+      const itemTitle = String(item.title || item_snapshot?.title || "your item").trim() || "your item";
+      await fetch(new URL("/api/send-push-notification", getAppOrigin(req)).toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: ownerId,
+          title: "New booking request",
+          body: `${renterName} wants to rent ${itemTitle}`,
+          url: "/profile",
+        }),
+      });
+    } catch (pushError) {
+      console.error("Booking request push notification failed", pushError);
     }
 
     return res.status(200).json({

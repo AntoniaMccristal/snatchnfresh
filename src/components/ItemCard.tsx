@@ -3,6 +3,7 @@ import { MouseEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { FALLBACK_ITEM_IMAGE, getItemImageUrl } from "@/lib/images";
+import { sendPushNotification } from "@/lib/pushNotifications";
 
 interface ItemCardProps {
   item: any;
@@ -127,6 +128,22 @@ const ItemCard = ({ item, variant = "grid" }: ItemCardProps) => {
     }
 
     setLiked(true);
+
+    if (ownerId && ownerId !== user.id) {
+      const likerName =
+        String(
+          user.user_metadata?.full_name ||
+          user.user_metadata?.first_name ||
+          user.email?.split("@")[0] ||
+          "Someone",
+        ).trim() || "Someone";
+      await sendPushNotification({
+        user_id: ownerId,
+        title: "New like",
+        body: `${likerName} liked ${item.title || "your listing"}`,
+        url: `/item/${item.id}`,
+      });
+    }
   }
 
   if (!item) return null;

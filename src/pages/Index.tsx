@@ -9,6 +9,7 @@ import { getItemImageUrl } from "@/lib/images";
 import { supabase } from "@/lib/supabaseClient";
 import { getBagItemIds } from "@/lib/bag";
 import { usePageRefresh } from "@/hooks/usePageRefresh";
+import { sendPushNotification } from "@/lib/pushNotifications";
 
 function normalizeCategory(value?: string) {
   if (!value) return "Other";
@@ -300,6 +301,23 @@ const Home = () => {
 
       if (error) {
         throw error;
+      }
+
+      if (action === "approve") {
+        const { data: bookingRow } = await supabase
+          .from("bookings")
+          .select("renter_id")
+          .eq("id", notification.bookingId)
+          .maybeSingle();
+
+        if (bookingRow?.renter_id) {
+          await sendPushNotification({
+            user_id: bookingRow.renter_id,
+            title: "Booking approved!",
+            body: `Your booking for ${notification.itemTitle || "your item"} has been approved`,
+            url: "/profile",
+          });
+        }
       }
 
       const { data: userData } = await supabase.auth.getUser();

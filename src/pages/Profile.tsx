@@ -21,6 +21,7 @@ import { uploadAvatar } from "@/lib/avatarUpload";
 import { usePageRefresh } from "@/hooks/usePageRefresh";
 import AvatarCropper from "@/components/AvatarCropper";
 import SnatchnWallet from "@/components/SnatchnWallet";
+import { sendPushNotification } from "@/lib/pushNotifications";
 
 type ProfileSection = "wardrobe" | "snatches" | "likes" | "wallet";
 
@@ -294,6 +295,15 @@ export default function Profile() {
     const { error } = await supabase.from("bookings").update({ tracking_status: "delivered", delivered_at: new Date().toISOString() }).eq("id", bookingId);
     setUpdatingOwnerBookingId(null);
     if (error) { alert(error.message || "Could not mark delivered."); return; }
+    const booking = ownerBookings.find((row) => row.id === bookingId);
+    if (booking?.renter_id) {
+      await sendPushNotification({
+        user_id: booking.renter_id,
+        title: "Item delivered",
+        body: "Your rental has been marked as delivered.",
+        url: "/profile",
+      });
+    }
     loadProfile();
   }
 
@@ -302,6 +312,15 @@ export default function Profile() {
     const { error } = await supabase.from("bookings").update({ item_returned_at: new Date().toISOString() }).eq("id", bookingId);
     setUpdatingOwnerBookingId(null);
     if (error) { alert(error.message || "Could not mark returned."); return; }
+    const booking = ownerBookings.find((row) => row.id === bookingId);
+    if (booking?.renter_id) {
+      await sendPushNotification({
+        user_id: booking.renter_id,
+        title: "Return marked complete",
+        body: "The lender marked your rental as returned.",
+        url: "/profile",
+      });
+    }
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
@@ -393,6 +412,15 @@ export default function Profile() {
     try {
       const { error: updateError } = await supabase.from("bookings").update({ item_returned_at: new Date().toISOString() }).eq("id", bookingId).eq("renter_id", user.id);
       if (updateError) throw updateError;
+      const booking = mySnatches.find((row) => row.id === bookingId);
+      if (booking?.owner_id) {
+        await sendPushNotification({
+          user_id: booking.owner_id,
+          title: "Return confirmed",
+          body: "The renter confirmed the item was returned in good condition.",
+          url: "/profile",
+        });
+      }
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
       if (!token) { alert("Return confirmed. Please log in again for payout checks."); loadProfile(); return; }
@@ -426,6 +454,22 @@ export default function Profile() {
     const { error } = await supabase.from("bookings").update({ status }).eq("id", bookingId);
     setUpdatingOwnerBookingId(null);
     if (error) { alert(error.message || "Could not update booking request."); return; }
+    if (status === "approved") {
+      const { data: bookingRow } = await supabase
+        .from("bookings")
+        .select("renter_id")
+        .eq("id", bookingId)
+        .maybeSingle();
+      const itemTitle = incomingRequests.find((booking) => booking.id === bookingId)?.item_title || "your item";
+      if (bookingRow?.renter_id) {
+        await sendPushNotification({
+          user_id: bookingRow.renter_id,
+          title: "Booking approved!",
+          body: `Your booking for ${itemTitle} has been approved`,
+          url: "/profile",
+        });
+      }
+    }
     loadProfile();
   }
 

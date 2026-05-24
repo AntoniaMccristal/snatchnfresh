@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { supabase } from "./lib/supabaseClient";
+import { registerPushSubscription } from "@/lib/pushNotifications";
 const Index = lazy(() => import("./pages/Index"));
 const Landing = lazy(() => import("./pages/Landing"));
 const Profile = lazy(() => import("./pages/Profile"));
@@ -122,6 +123,28 @@ export default function App() {
       if (splashTimerRef.current) {
         window.clearTimeout(splashTimerRef.current);
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const syncPushSubscription = async (session: any) => {
+      if (!active || !session?.user?.id) return;
+      await registerPushSubscription(session.user.id, supabase);
+    };
+
+    supabase.auth.getSession().then(({ data }) => {
+      void syncPushSubscription(data.session);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      void syncPushSubscription(session);
+    });
+
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
     };
   }, []);
 
