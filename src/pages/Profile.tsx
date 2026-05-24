@@ -99,6 +99,9 @@ export default function Profile() {
   const [followsEnabled, setFollowsEnabled] = useState(true);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(() =>
+    typeof window !== "undefined" && "Notification" in window ? Notification.permission : "default",
+  );
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
   const loadProfile = useCallback(async () => {
@@ -967,6 +970,33 @@ export default function Profile() {
 
           {showSettings && (
             <div className="space-y-3 pb-4">
+              {typeof window !== "undefined" && "Notification" in window && notifPermission !== "granted" && (
+                <div className="bg-card rounded-2xl border border-border/50 p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Push notifications</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Get notified about bookings and messages</p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        const { registerPushSubscription } = await import("@/lib/pushNotifications");
+                        await registerPushSubscription(user.id, supabase);
+                        setNotifPermission(Notification.permission);
+                      }}
+                      className="h-8 px-4 rounded-xl bg-primary text-primary-foreground text-xs font-bold"
+                    >
+                      Enable
+                    </button>
+                  </div>
+                </div>
+              )}
+              {notifPermission === "granted" && (
+                <div className="bg-card rounded-2xl border border-border/50 p-4 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-foreground">Push notifications</p>
+                  <span className="text-xs font-bold text-green-600">Enabled</span>
+                </div>
+              )}
+
               {/* Stripe */}
               <div className="bg-card rounded-2xl border border-border/50 p-4">
                 <div className="flex items-center justify-between">
