@@ -141,10 +141,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         payout_hold_reason: holdCheck.reason || "payout_hold_conditions_not_met",
       });
 
+      const reason = holdCheck.reason || "Payout release conditions not met.";
+      console.error("Payout release blocked:", reason);
+      console.error("Payout 409 reason:", reason);
       return res.status(409).json({
         released: false,
         hold: true,
-        reason: holdCheck.reason || "Payout release conditions not met.",
+        reason,
       });
     }
 
