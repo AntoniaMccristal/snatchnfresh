@@ -840,7 +840,8 @@ export default function Profile() {
               mySnatches.map((booking) => {
                 const hasExistingRating = Boolean(myRatingsByBooking[booking.id]);
                 const selectedRating = ratingDrafts[booking.id] || 0;
-                const canRate = RATEABLE_STATUSES.has(String(booking.status || "").toLowerCase());
+                const canRate = RATEABLE_STATUSES.has(String(booking.status || "").toLowerCase())
+                  && Boolean(booking.item_returned_at);
                 const bookingStatus = String(booking.status || "").toLowerCase();
                 const canConfirmReturn = ["approved", "paid", "completed"].includes(bookingStatus)
                   && !booking.item_returned_at
