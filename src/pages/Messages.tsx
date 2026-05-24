@@ -4,7 +4,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { getItemImageUrl } from "@/lib/images";
 import { usePageRefresh } from "@/hooks/usePageRefresh";
-import { sendPushNotification } from "@/lib/pushNotifications";
 
 function formatTime(value?: string) {
   if (!value) return "";
@@ -246,21 +245,39 @@ export default function Messages() {
       if (!error && result.data) {
         setMessages((prev) => [result.data as MessageRow, ...prev]);
         setDraft("");
-        const senderName =
-          String(
-            userData?.user?.user_metadata?.full_name ||
-            userData?.user?.user_metadata?.first_name ||
-            profiles[currentUserId]?.full_name ||
-            profiles[currentUserId]?.username ||
-            userData?.user?.email?.split("@")[0] ||
-            "Someone",
-          ).trim() || "Someone";
-        await sendPushNotification({
-          user_id: selectedPeerId,
-          title: "New message",
-          body: `${senderName} sent you a message`,
-          url: `/messages?user=${currentUserId}${activeItemId ? `&item=${activeItemId}` : ""}`,
-        });
+        const receiverId = selectedPeerId;
+
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData.session?.access_token;
+          const senderName =
+            String(
+              sessionData.session?.user?.user_metadata?.full_name ||
+              sessionData.session?.user?.user_metadata?.first_name ||
+              profiles[currentUserId]?.full_name ||
+              profiles[currentUserId]?.username ||
+              sessionData.session?.user?.email?.split("@")[0] ||
+              "Someone",
+            ).trim() || "Someone";
+
+          if (token && receiverId) {
+            await fetch("/api/send-push-notification", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                user_id: receiverId,
+                title: "New message on Snatch'n",
+                body: `${senderName} sent you a message`,
+                url: "/messages",
+              }),
+            });
+          }
+        } catch (err) {
+          console.error("Push notification failed:", err);
+        }
         break;
       }
 
