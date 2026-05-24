@@ -103,7 +103,35 @@ export default function Profile() {
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>(() =>
     typeof window !== "undefined" && "Notification" in window ? Notification.permission : "default",
   );
+  const [hasPushSubscription, setHasPushSubscription] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
+
+  const checkPushSubscription = useCallback(async () => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      setHasPushSubscription(false);
+      return;
+    }
+
+    setNotifPermission(Notification.permission);
+
+    if (Notification.permission !== "granted" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+      setHasPushSubscription(false);
+      return;
+    }
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      setHasPushSubscription(Boolean(subscription));
+    } catch (error) {
+      console.error("Push subscription check failed:", error);
+      setHasPushSubscription(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void checkPushSubscription();
+  }, [checkPushSubscription]);
 
   const loadProfile = useCallback(async () => {
     const requestId = Date.now();
@@ -995,7 +1023,7 @@ export default function Profile() {
 
           {showSettings && (
             <div className="space-y-3 pb-4">
-              {typeof window !== "undefined" && "Notification" in window && notifPermission !== "granted" && (
+              {typeof window !== "undefined" && "Notification" in window && (notifPermission !== "granted" || !hasPushSubscription) && (
                 <div className="bg-card rounded-2xl border border-border/50 p-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -1006,7 +1034,7 @@ export default function Profile() {
                       onClick={async () => {
                         const { registerPushSubscription } = await import("@/lib/pushNotifications");
                         await registerPushSubscription(user.id, supabase);
-                        setNotifPermission(Notification.permission);
+                        await checkPushSubscription();
                       }}
                       className="h-8 px-4 rounded-xl bg-primary text-primary-foreground text-xs font-bold"
                     >
@@ -1015,7 +1043,7 @@ export default function Profile() {
                   </div>
                 </div>
               )}
-              {notifPermission === "granted" && (
+              {notifPermission === "granted" && hasPushSubscription && (
                 <div className="bg-card rounded-2xl border border-border/50 p-4 flex items-center justify-between">
                   <p className="text-sm font-semibold text-foreground">Push notifications</p>
                   <span className="text-xs font-bold text-green-600">Enabled</span>
