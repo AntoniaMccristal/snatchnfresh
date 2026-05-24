@@ -505,7 +505,7 @@ const Booking = () => {
                 <Truck size={14} className="text-primary" /> Delivery method
               </p>
               {[
-                { value: "pickup", label: "Local handoff (Free)" },
+                { value: "pickup", label: "I am happy to come pick it up (Free · Same day)" },
                 { value: "standard_shipping", label: `Standard shipping ($${standardShipping})` },
                 { value: "express_shipping", label: `Express shipping ($${expressShipping})` },
               ].map((opt) => (
@@ -531,13 +531,13 @@ const Booking = () => {
                   {item?.allows_pickup !== false && (
                     <label className="flex items-center gap-2 text-sm cursor-pointer">
                       <input type="radio" name="handoff" checked={localHandoffType === "pickup"} onChange={() => setLocalHandoffType("pickup")} />
-                      I'll pick it up
+                      I will come to the lender
                     </label>
                   )}
                   {item?.allows_dropoff !== false && (
                     <label className="flex items-center gap-2 text-sm cursor-pointer">
                       <input type="radio" name="handoff" checked={localHandoffType === "dropoff"} onChange={() => setLocalHandoffType("dropoff")} />
-                      Seller drops off
+                      Lender delivers to me
                     </label>
                   )}
                   <button
