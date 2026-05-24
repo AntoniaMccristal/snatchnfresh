@@ -150,7 +150,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         settings: {
           payouts: {
-            schedule: { interval: "manual" },
+            schedule: {
+              interval: "weekly",
+              weekly_anchor: "monday",
+            },
           },
         },
       });
