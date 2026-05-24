@@ -807,8 +807,16 @@ export default function Profile() {
                       </div>
                       <div className="flex gap-2 mt-2">
                         <button onClick={() => markDelivered(booking.id)} disabled={updatingOwnerBookingId === booking.id} className="flex-1 h-8 rounded-xl border border-border text-xs font-semibold disabled:opacity-60">Mark delivered</button>
-                        <button onClick={() => markReturned(booking.id)} disabled={updatingOwnerBookingId === booking.id} className="flex-1 h-8 rounded-xl border border-border text-xs font-semibold disabled:opacity-60">Mark returned</button>
                       </div>
+                      {!booking.item_returned_at && booking.status !== "completed" && (
+                        <button
+                          onClick={() => markReturned(booking.id)}
+                          disabled={updatingOwnerBookingId === booking.id}
+                          className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-bold text-sm mt-2 disabled:opacity-60"
+                        >
+                          {updatingOwnerBookingId === booking.id ? "Working..." : "Item returned to me - release payout"}
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -836,7 +844,8 @@ export default function Profile() {
                 const bookingStatus = String(booking.status || "").toLowerCase();
                 const canConfirmReturn = ["approved", "paid", "completed"].includes(bookingStatus)
                   && !booking.item_returned_at
-                  && (booking.tracking_status === "delivered" || booking.delivery_method === "pickup");
+                  && booking.delivery_method !== "pickup"
+                  && booking.tracking_status === "delivered";
 
                 return (
                   <div key={booking.id} className="bg-card rounded-2xl border border-border/50 shadow-soft p-3">
