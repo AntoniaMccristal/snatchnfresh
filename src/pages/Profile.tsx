@@ -790,7 +790,9 @@ export default function Profile() {
                 const selectedRating = ratingDrafts[booking.id] || 0;
                 const canRate = RATEABLE_STATUSES.has(String(booking.status || "").toLowerCase());
                 const bookingStatus = String(booking.status || "").toLowerCase();
-                const canConfirmReturn = ["approved", "paid", "completed"].includes(bookingStatus) && !booking.item_returned_at;
+                const canConfirmReturn = ["approved", "paid", "completed"].includes(bookingStatus)
+                  && !booking.item_returned_at
+                  && (booking.tracking_status === "delivered" || booking.delivery_method === "pickup");
 
                 return (
                   <div key={booking.id} className="bg-card rounded-2xl border border-border/50 shadow-soft p-3">
