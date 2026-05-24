@@ -100,38 +100,33 @@ export default function Profile() {
   const [followsEnabled, setFollowsEnabled] = useState(true);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
-  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(() =>
-    typeof window !== "undefined" && "Notification" in window ? Notification.permission : "default",
-  );
-  const [hasPushSubscription, setHasPushSubscription] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(true);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
-  const checkPushSubscription = useCallback(async () => {
-    if (typeof window === "undefined" || !("Notification" in window)) {
-      setHasPushSubscription(false);
-      return;
-    }
-
-    setNotifPermission(Notification.permission);
-
-    if (Notification.permission !== "granted" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
-      setHasPushSubscription(false);
-      return;
-    }
-
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
-      setHasPushSubscription(Boolean(subscription));
-    } catch (error) {
-      console.error("Push subscription check failed:", error);
-      setHasPushSubscription(false);
-    }
-  }, []);
-
   useEffect(() => {
-    void checkPushSubscription();
-  }, [checkPushSubscription]);
+    const checkPushStatus = async () => {
+      if (!user) return;
+
+      setPushLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("push_subscriptions")
+          .select("id")
+          .eq("user_id", user.id)
+          .limit(1);
+
+        if (error) throw error;
+        setPushEnabled((data || []).length > 0);
+      } catch {
+        setPushEnabled(false);
+      } finally {
+        setPushLoading(false);
+      }
+    };
+
+    void checkPushStatus();
+  }, [user]);
 
   const loadProfile = useCallback(async () => {
     const requestId = Date.now();
@@ -1023,7 +1018,7 @@ export default function Profile() {
 
           {showSettings && (
             <div className="space-y-3 pb-4">
-              {typeof window !== "undefined" && "Notification" in window && (notifPermission !== "granted" || !hasPushSubscription) && (
+              {!pushLoading && !pushEnabled && (
                 <div className="bg-card rounded-2xl border border-border/50 p-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -1032,9 +1027,20 @@ export default function Profile() {
                     </div>
                     <button
                       onClick={async () => {
+                        if ("serviceWorker" in navigator && "PushManager" in window) {
+                          const reg = await navigator.serviceWorker.ready;
+                          const existing = await reg.pushManager.getSubscription();
+                          if (existing) await existing.unsubscribe();
+                        }
                         const { registerPushSubscription } = await import("@/lib/pushNotifications");
                         await registerPushSubscription(user.id, supabase);
-                        await checkPushSubscription();
+
+                        const { data, error } = await supabase
+                          .from("push_subscriptions")
+                          .select("id")
+                          .eq("user_id", user.id)
+                          .limit(1);
+                        setPushEnabled(!error && (data || []).length > 0);
                       }}
                       className="h-8 px-4 rounded-xl bg-primary text-primary-foreground text-xs font-bold"
                     >
@@ -1043,7 +1049,7 @@ export default function Profile() {
                   </div>
                 </div>
               )}
-              {notifPermission === "granted" && hasPushSubscription && (
+              {!pushLoading && pushEnabled && (
                 <div className="bg-card rounded-2xl border border-border/50 p-4 flex items-center justify-between">
                   <p className="text-sm font-semibold text-foreground">Push notifications</p>
                   <span className="text-xs font-bold text-green-600">Enabled</span>
