@@ -9,6 +9,7 @@ import {
   Heart,
   LogOut,
   MapPin,
+  MessageCircle,
   Settings,
   Shirt,
   Sparkles,
@@ -706,6 +707,12 @@ export default function Profile() {
                       </div>
                       <div className="flex gap-2 mt-3">
                         <button
+                          onClick={() => navigate(`/messages?user=${booking.renter_id}&item=${booking.item_id}`)}
+                          className="flex-1 h-9 rounded-xl border border-border/60 text-xs font-semibold flex items-center justify-center gap-1.5"
+                        >
+                          <MessageCircle size={13} /> Message renter
+                        </button>
+                        <button
                           onClick={() => updateIncomingRequest(booking.id, "approved")}
                           disabled={updatingOwnerBookingId === booking.id}
                           className="flex-1 h-9 rounded-xl bg-primary text-primary-foreground text-xs font-bold disabled:opacity-60"
@@ -799,6 +806,14 @@ export default function Profile() {
                           {booking.payout_status || "held"}
                         </span>
                       </div>
+                      <div className="flex gap-2 mb-3">
+                        <button
+                          onClick={() => navigate(`/messages?user=${booking.renter_id}&item=${booking.item_id}`)}
+                          className="flex-1 h-9 rounded-xl border border-border/60 text-xs font-semibold flex items-center justify-center gap-1.5"
+                        >
+                          <MessageCircle size={13} /> Message renter
+                        </button>
+                      </div>
                       <div className="flex gap-2">
                         <input
                           value={trackingDrafts[booking.id] || ""}
@@ -850,6 +865,7 @@ export default function Profile() {
                   && !booking.item_returned_at
                   && booking.delivery_method !== "pickup"
                   && booking.tracking_status === "delivered";
+                const lenderId = booking.owner_id || booking.item?.owner_id || booking.item?.user_id;
 
                 return (
                   <div key={booking.id} className="bg-card rounded-2xl border border-border/50 shadow-soft p-3">
@@ -871,6 +887,15 @@ export default function Profile() {
                         </div>
                       </div>
                     </button>
+
+                    {lenderId && (
+                      <button
+                        onClick={() => navigate(`/messages?user=${lenderId}&item=${booking.item_id}`)}
+                        className="w-full h-9 rounded-xl border border-border/60 text-xs font-semibold flex items-center justify-center gap-1.5 mt-2"
+                      >
+                        <MessageCircle size={13} /> Message lender
+                      </button>
+                    )}
 
                     {canConfirmReturn && (
                       <div className="mt-3 pt-3 border-t border-border/40">

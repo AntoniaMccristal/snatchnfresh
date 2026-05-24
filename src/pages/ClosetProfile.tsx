@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, MessageCircle } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { getItemImageUrl } from "@/lib/images";
@@ -201,6 +201,16 @@ export default function ClosetProfile() {
           </div>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          {userId && currentUserId !== userId && (
+            <button
+              type="button"
+              onClick={() => navigate(`/messages?user=${userId}`)}
+              className="h-8 px-2.5 rounded-lg border border-border text-xs font-semibold inline-flex items-center gap-1.5"
+            >
+              <MessageCircle size={13} />
+              Message
+            </button>
+          )}
           <button
             type="button"
             onClick={() => navigate(`/reviews/${userId}`)}

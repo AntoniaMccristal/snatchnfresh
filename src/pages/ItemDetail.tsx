@@ -417,7 +417,7 @@ const ItemDetail = () => {
               Choose your dates, send a booking request, and wait for the lender to approve before the rental is confirmed.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2">
             <button
               type="button"
               onClick={() => {
@@ -430,16 +430,6 @@ const ItemDetail = () => {
               <ShoppingBag size={14} />
               {inBag ? "In Bag" : "Add to Bag"}
             </button>
-            {ownerId && (
-              <button
-                type="button"
-                onClick={() => navigate(`/messages?user=${ownerId}&item=${item.id}`)}
-                className="h-10 rounded-xl border border-border/60 bg-background text-sm font-semibold inline-flex items-center justify-center gap-1.5"
-              >
-                <MessageCircle size={14} />
-                Message
-              </button>
-            )}
           </div>
 
           <h3 className="font-semibold text-sm">Select Dates</h3>
@@ -474,13 +464,23 @@ const ItemDetail = () => {
             </p>
           )}
 
-          <button
-            onClick={handleContinueToBooking}
-            disabled={!startDate || !endDate || isContinuing}
-            className="w-full bg-primary text-white py-3 rounded-xl font-semibold disabled:opacity-50 active:scale-[0.99] transition-all"
-          >
-            {isContinuing ? "Preparing booking..." : "Request Booking"}
-          </button>
+          <div className="flex gap-2">
+            {ownerId && (
+              <button
+                onClick={() => navigate(`/messages?user=${item.owner_id || item.user_id}&item=${item.id}`)}
+                className="h-12 px-5 rounded-2xl border border-border/60 bg-card flex items-center gap-2 text-sm font-semibold flex-shrink-0"
+              >
+                <MessageCircle size={15} /> Message
+              </button>
+            )}
+            <button
+              onClick={handleContinueToBooking}
+              disabled={!startDate || !endDate || isContinuing}
+              className="flex-1 h-12 bg-primary text-white py-3 rounded-xl font-semibold disabled:opacity-50 active:scale-[0.99] transition-all"
+            >
+              {isContinuing ? "Preparing booking..." : "Request to Rent →"}
+            </button>
+          </div>
         </div>
       )}
 
