@@ -4,10 +4,10 @@
 
 @layer base {
   :root {
-    --background: 92 24% 63%;
+    --background: 0 0% 100%;
     --foreground: 0 0% 10%;
 
-    --card: 348 45% 88%;
+    --card: 0 0% 98%;
     --card-foreground: 0 0% 10%;
 
     --popover: 348 45% 90%;
@@ -16,10 +16,10 @@
     --primary: 0 0% 8%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 92 18% 56%;
+    --secondary: 0 0% 96%;
     --secondary-foreground: 0 0% 12%;
 
-    --muted: 348 28% 82%;
+    --muted: 0 0% 96%;
     --muted-foreground: 0 0% 38%;
 
     --accent: 0 0% 8%;
@@ -44,12 +44,12 @@
     --sidebar-ring: 0 0% 8%;
 
     /* Custom Wardrobe tokens */
-    --warm-cream: 92 24% 63%;
+    --warm-cream: 0 0% 100%;
     --terracotta: 0 0% 10%;
     --terracotta-light: 348 45% 90%;
     --terracotta-glow: 0 0% 85%;
-    --sage: 92 18% 56%;
-    --sage-light: 92 16% 66%;
+    --sage: 0 0% 96%;
+    --sage-light: 0 0% 98%;
     --warm-gold: 0 0% 8%;
     --warm-brown: 0 0% 8%;
     --blush: 348 45% 88%;
@@ -216,7 +216,7 @@
 
 /* Warm gradient backgrounds */
 .bg-warm-gradient {
-  background: hsl(var(--background));
+  background: linear-gradient(135deg, #ffffff 0%, #fdf8f9 100%);
 }
 
 .bg-primary-gradient {
@@ -230,6 +230,7 @@
   min-height: 100dvh;
   position: relative;
   overflow-x: hidden;
+  background: #ffffff;
 }
 
 /* Card hover lift */
