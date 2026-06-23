@@ -60,9 +60,14 @@ export default function Messages() {
   const [composeQuery, setComposeQuery] = useState("");
   const [composeResults, setComposeResults] = useState<any[]>([]);
   const [composeLoading, setComposeLoading] = useState(false);
+  const [mobileView, setMobileView] = useState<"list" | "chat">("list");
 
   const targetUserId = params.get("user") || "";
   const targetItemId = params.get("item") || null;
+
+  useEffect(() => {
+    if (targetUserId) setMobileView("chat");
+  }, [targetUserId]);
 
   const loadMessages = useCallback(async () => {
     setLoading(true);
@@ -368,7 +373,7 @@ export default function Messages() {
 
   return (
     <div className="app-shell bg-warm-gradient pb-24 page-transition">
-      <header className="px-5 pt-[max(0.75rem,env(safe-area-inset-top))] pb-4 flex items-center gap-3">
+      <header className={`px-5 pt-[max(0.75rem,env(safe-area-inset-top))] pb-4 items-center gap-3 ${mobileView === "chat" ? "hidden md:flex" : "flex"}`}>
         <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-full bg-card border border-border/60 flex items-center justify-center shadow-soft">
           <ArrowLeft size={18} className="text-foreground" />
         </button>
@@ -385,7 +390,7 @@ export default function Messages() {
         </button>
       </header>
 
-      <div className="px-5 pb-3 flex gap-2">
+      <div className={`px-5 pb-3 gap-2 ${mobileView === "chat" ? "hidden md:flex" : "flex"}`}>
         {[
           { id: "all", label: "All" },
           { id: "buying", label: "Buying" },
@@ -408,8 +413,8 @@ export default function Messages() {
         })}
       </div>
 
-      <div className="px-5 grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-3">
-        <div className="rounded-2xl border border-border/60 bg-card overflow-hidden max-h-[60vh] overflow-y-auto">
+      <div className="px-0 md:px-5 md:grid md:grid-cols-[320px_1fr] md:gap-3">
+        <div className={`${mobileView === "chat" ? "hidden md:flex" : "flex"} w-full h-[calc(100vh-9rem)] md:h-auto md:max-h-[60vh] md:w-80 flex-col overflow-hidden overflow-y-auto rounded-none border-y border-gray-100 bg-card md:rounded-2xl md:border md:border-border/60`}>
           {filteredConversations.length === 0 && (
             <p className="text-sm text-muted-foreground p-4">No conversations yet.</p>
           )}
@@ -423,7 +428,10 @@ export default function Messages() {
             return (
               <button
                 key={conv.peerId}
-                onClick={() => navigate(`/messages?user=${conv.peerId}${conv.itemId ? `&item=${conv.itemId}` : ""}`)}
+                onClick={() => {
+                  setMobileView("chat");
+                  navigate(`/messages?user=${conv.peerId}${conv.itemId ? `&item=${conv.itemId}` : ""}`);
+                }}
                 className={`w-full text-left flex items-center gap-3 p-4 border-b border-gray-100 transition-colors ${
                   active ? "bg-gray-50" : "bg-white hover:bg-gray-50"
                 }`}
@@ -452,7 +460,13 @@ export default function Messages() {
           })}
         </div>
 
-        <div className="rounded-2xl border border-border/60 bg-card flex flex-col max-h-[60vh] overflow-hidden">
+        <div className={`${mobileView === "list" ? "hidden md:flex" : "flex"} w-full h-[calc(100vh-4rem)] md:h-auto md:max-h-[60vh] flex-1 flex-col overflow-hidden rounded-none bg-card md:rounded-2xl md:border md:border-border/60`}>
+          <button
+            onClick={() => setMobileView("list")}
+            className="md:hidden flex items-center gap-2 p-4 border-b border-gray-100 text-sm font-semibold"
+          >
+            <ArrowLeft size={18} /> Back
+          </button>
           {selectedPeerId && (
             <div className="sticky top-0 z-10 border-b border-gray-100 bg-white p-3">
               <div className="flex items-center gap-3">
@@ -509,7 +523,7 @@ export default function Messages() {
                         {getDisplayName(senderProfile)}
                       </p>
                     )}
-                    <div className={`max-w-[70%] w-fit rounded-2xl px-4 py-2.5 text-sm ${mine ? "ml-auto bg-foreground text-background rounded-br-sm" : "bg-gray-100 text-foreground rounded-bl-sm"}`}>
+                    <div className={`max-w-[75%] w-fit rounded-2xl px-4 py-2.5 text-sm ${mine ? "ml-auto bg-foreground text-background rounded-br-sm" : "bg-gray-100 text-foreground rounded-bl-sm"}`}>
                       <p>{message.body}</p>
                     </div>
                     <p className={`text-xs text-muted-foreground mt-1 ${mine ? "text-right" : "text-left"}`}>
