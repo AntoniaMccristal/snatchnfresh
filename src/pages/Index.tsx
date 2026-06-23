@@ -462,8 +462,8 @@ const Home = () => {
   };
 
   return (
-    <div className="app-shell bg-warm-gradient pb-24 page-transition">
-      <header className="sticky top-0 z-40 border-b border-border/40 bg-background/95 backdrop-blur">
+    <div className="app-shell pb-24 page-transition" style={{ background: "#ffffff" }}>
+      <header className="sticky top-0 z-40 border-b border-border/40 backdrop-blur" style={{ background: "#ffffff" }}>
         <div className="px-5 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">

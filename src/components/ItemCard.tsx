@@ -156,9 +156,10 @@ const ItemCard = ({ item, variant = "grid" }: ItemCardProps) => {
 
   return (
     <div
-      className={`group cursor-pointer card-lift ${
+      className={`group cursor-pointer card-lift rounded-2xl p-2 ${
         variant === "featured" ? "w-[220px] flex-shrink-0" : ""
       }`}
+      style={{ background: "#ffffff", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
       onClick={() => navigate(`/item/${item.id}`)}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {

@@ -5,10 +5,10 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 0 0% 10%;
+    --foreground: 0 0% 4%;
 
-    --card: 0 0% 98%;
-    --card-foreground: 0 0% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 4%;
 
     --popover: 348 45% 90%;
     --popover-foreground: 0 0% 10%;
@@ -19,8 +19,8 @@
     --secondary: 0 0% 96%;
     --secondary-foreground: 0 0% 12%;
 
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 38%;
+    --muted: 270 20% 97%;
+    --muted-foreground: 270 8% 45%;
 
     --accent: 0 0% 8%;
     --accent-foreground: 0 0% 100%;
@@ -28,8 +28,8 @@
     --destructive: 0 76% 90%;
     --destructive-foreground: 0 63% 31%;
 
-    --border: 348 22% 76%;
-    --input: 348 22% 76%;
+    --border: 270 15% 91%;
+    --input: 270 15% 91%;
     --ring: 0 0% 8%;
 
     --radius: 0.75rem;
@@ -216,7 +216,11 @@
 
 /* Warm gradient backgrounds */
 .bg-warm-gradient {
-  background: linear-gradient(135deg, #ffffff 0%, #fdf8f9 100%);
+  background: linear-gradient(160deg, #ede9f8 0%, #f8f0f5 40%, #ffffff 100%);
+}
+
+.bg-hero-gradient {
+  background: linear-gradient(160deg, #e8e0f8 0%, #f5e8f2 50%, #fce8f0 100%);
 }
 
 .bg-primary-gradient {
@@ -227,7 +231,7 @@
 .app-shell {
   width: 100%;
   max-width: none;
-  min-height: 100dvh;
+  min-height: 100vh;
   position: relative;
   overflow-x: hidden;
   background: #ffffff;

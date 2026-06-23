@@ -48,7 +48,7 @@ export default function Landing() {
   }, []);
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif", background: "hsl(var(--background))", color: "#1a0a2e", overflowX: "hidden" }}>
+    <div style={{ fontFamily: "'Inter', sans-serif", background: "#ffffff", color: "#1a0a2e", overflowX: "hidden" }}>
 
       {/* ── Nav ── */}
       <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, background: "hsl(var(--background) / 0.92)", backdropFilter: "blur(12px)", borderBottom: "0.5px solid rgba(26,10,46,0.08)", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 60 }}>
@@ -72,17 +72,13 @@ export default function Landing() {
       </nav>
 
       {/* ── Hero ── */}
-      <section style={{ paddingTop: 120, paddingBottom: 80, textAlign: "center", position: "relative", overflow: "hidden" }}>
-        {/* Background blobs */}
-        <div style={{ position: "absolute", top: -60, right: -80, width: 400, height: 400, borderRadius: "50%", background: "rgba(244,197,208,0.35)", filter: "blur(80px)", pointerEvents: "none" }} />
-        <div style={{ position: "absolute", bottom: -40, left: -60, width: 300, height: 300, borderRadius: "50%", background: "rgba(180,200,150,0.3)", filter: "blur(60px)", pointerEvents: "none" }} />
-
+      <section style={{ paddingTop: 120, paddingBottom: 80, textAlign: "center", position: "relative", overflow: "hidden", background: "linear-gradient(160deg, #e8e0f8 0%, #f5e8f2 50%, #fce8f0 100%)" }}>
         <div ref={heroRef} style={{ position: "relative", zIndex: 1 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#fff", border: "0.5px solid rgba(26,10,46,0.12)", borderRadius: 99, padding: "5px 14px", fontSize: 12, fontWeight: 600, color: "#6b5f7a", marginBottom: 24 }}>
             Sustainable fashion · Sydney, AU
           </div>
 
-          <h1 style={{ fontSize: "clamp(40px,7vw,80px)", fontWeight: 800, letterSpacing: "-2px", lineHeight: 1.05, margin: "0 auto 20px", maxWidth: 800, padding: "0 24px" }}>
+          <h1 style={{ fontSize: "clamp(48px, 8vw, 88px)", fontWeight: 900, letterSpacing: "-2px", lineHeight: 1.05, margin: "0 auto 20px", maxWidth: 800, padding: "0 24px" }}>
             Rent fashion from<br />
             <span style={{ color: "#9d6e8a", fontStyle: "italic" }}>your neighbours.</span>
           </h1>
@@ -146,7 +142,7 @@ export default function Landing() {
       </section>
 
       {/* ── Stats strip ── */}
-      <section style={{ background: "#5c6b47", padding: "32px 24px", display: "flex", gap: 0, justifyContent: "center", flexWrap: "wrap" }}>
+      <section style={{ background: "#1a0a2e", padding: "32px 24px", display: "flex", gap: 0, justifyContent: "center", flexWrap: "wrap" }}>
         {[
           { num: "90%", label: "goes to the lender" },
           { num: "$0", label: "to list an item" },
@@ -169,7 +165,7 @@ export default function Landing() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 24 }}>
           {HOW_STEPS.map((step, index) => (
             <div key={step.num} style={{ background: "#fff", borderRadius: 24, padding: "28px 24px", border: "0.5px solid rgba(26,10,46,0.08)" }}>
-              <div style={{ width: 40, height: 40, borderRadius: 12, background: index % 2 === 1 ? "#d4e0c4" : "#f4c5d0", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: index % 2 === 1 ? "#e8e0f8" : "#f4c5d0", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
                 <span style={{ fontSize: 13, fontWeight: 800, color: "#1a0a2e" }}>{step.num}</span>
               </div>
               <p style={{ fontSize: 16, fontWeight: 700, margin: "0 0 8px", letterSpacing: "-0.3px" }}>{step.title}</p>
@@ -211,7 +207,7 @@ export default function Landing() {
       )}
 
       {/* ── Testimonials ── */}
-      <section style={{ background: "hsl(var(--sage-light, 120 15% 90%))", padding: "80px 24px" }}>
+      <section style={{ background: "#f8f5ff", padding: "80px 24px" }}>
         <div style={{ maxWidth: 1000, margin: "0 auto" }}>
           <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#9d6e8a", marginBottom: 12 }}>Early users</p>
           <h2 style={{ fontSize: "clamp(24px,3vw,36px)", fontWeight: 800, letterSpacing: "-1px", margin: "0 0 40px" }}>People love it</h2>
@@ -236,7 +232,7 @@ export default function Landing() {
       <section id="business" style={{ padding: "80px 24px", maxWidth: 1000, margin: "0 auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "center" }}>
           <div>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#d4e0c4", borderRadius: 99, padding: "4px 12px", fontSize: 11, fontWeight: 700, color: "#1a0a2e", marginBottom: 16 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#e8e0f8", borderRadius: 99, padding: "4px 12px", fontSize: 11, fontWeight: 700, color: "#1a0a2e", marginBottom: 16 }}>
               For rental businesses
             </div>
             <h2 style={{ fontSize: "clamp(26px,3.5vw,40px)", fontWeight: 800, letterSpacing: "-1.5px", lineHeight: 1.1, margin: "0 0 16px" }}>
@@ -266,12 +262,12 @@ export default function Landing() {
       </section>
 
       {/* ── Sustainability ── */}
-      <section style={{ background: "#5c6b47", padding: "72px 24px", textAlign: "center" }}>
+      <section style={{ background: "linear-gradient(135deg, #e8e0f8, #fce8f0)", padding: "72px 24px", textAlign: "center" }}>
         <div style={{ maxWidth: 600, margin: "0 auto" }}>
-          <h2 style={{ fontSize: "clamp(26px,4vw,42px)", fontWeight: 800, color: "#fff", letterSpacing: "-1.5px", margin: "0 0 16px", lineHeight: 1.15 }}>
+          <h2 style={{ fontSize: "clamp(26px,4vw,42px)", fontWeight: 800, color: "#1a0a2e", letterSpacing: "-1.5px", margin: "0 0 16px", lineHeight: 1.15 }}>
             Every rental keeps a garment out of landfill.
           </h2>
-          <p style={{ fontSize: 15, color: "rgba(255,255,255,0.55)", margin: "0 0 36px", lineHeight: 1.7 }}>
+          <p style={{ fontSize: 15, color: "#1a0a2e", margin: "0 0 36px", lineHeight: 1.7 }}>
             The fashion industry produces 92 million tonnes of waste a year. Snatch'n is our small part in changing that — one wardrobe at a time.
           </p>
           <button

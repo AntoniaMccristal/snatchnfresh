@@ -20,7 +20,10 @@ export default function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-[100] bg-white/98 backdrop-blur border-t border-border h-16 px-2 pb-[max(0px,env(safe-area-inset-bottom))] flex items-center justify-around pointer-events-auto">
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-[100] backdrop-blur h-16 px-2 pb-[max(0px,env(safe-area-inset-bottom))] flex items-center justify-around pointer-events-auto"
+      style={{ background: "rgba(255,255,255,0.97)", borderTop: "1px solid rgba(0,0,0,0.06)" }}
+    >
       {navItems.map((item) => {
         const Icon = item.icon;
         const isList = item.label === "List";

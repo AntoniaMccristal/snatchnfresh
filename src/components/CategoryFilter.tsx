@@ -10,18 +10,22 @@ const CategoryFilter = ({ selected, onSelect, categories: categoryOptions }: Cat
   const options = categoryOptions && categoryOptions.length > 0 ? categoryOptions : categories;
 
   return (
-    <div className="flex gap-1 overflow-x-auto px-0 scrollbar-none">
+    <div className="flex gap-2 overflow-x-auto px-0 scrollbar-none">
       {options.map((cat) => {
         const active = selected === cat;
         return (
           <button
             key={cat}
             onClick={() => onSelect(cat)}
-            className={`flex-shrink-0 rounded-none px-3 py-2 text-[13px] transition-all duration-300 border-b-2 ${
+            className={`flex-shrink-0 rounded-full px-4 py-2 text-[13px] transition-all duration-300 ${
               active
-                ? "bg-transparent text-foreground border-foreground font-bold"
-                : "bg-transparent text-muted-foreground border-transparent hover:text-foreground hover:border-foreground/30"
+                ? "font-bold"
+                : "font-semibold"
             }`}
+            style={{
+              background: active ? "#1a0a2e" : "#f0ebff",
+              color: active ? "#ffffff" : "#3d1f6e",
+            }}
           >
             {cat}
           </button>
