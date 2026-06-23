@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Loader2, Plus, X } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
@@ -57,6 +57,46 @@ type ValidationState = {
   standardShipping: boolean;
   expressShipping: boolean;
 };
+
+class ListItemErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: string }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: "" };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error: String(error?.message || error || "Unknown error") };
+  }
+
+  componentDidCatch(error: any) {
+    console.error("ListItem render failed", error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="app-shell p-6 space-y-4">
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+            <p className="text-sm font-bold text-red-900">Listing form could not be displayed</p>
+            <p className="text-xs text-red-700 mt-1">{this.state.error}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => window.history.back()}
+            className="h-10 px-4 rounded-xl border border-border text-sm"
+          >
+            Go back
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 function getMissingColumnFromError(error: any): string | null {
   const message = String(error?.message || "");
@@ -391,7 +431,7 @@ const ListItem = () => {
   async function handleImageSelect(fileList: FileList | null) {
     const currentImages = images;
     const files = Array.from(fileList || []);
-    const remaining = maxImages - currentImages.length;
+    const remaining = Math.max(0, maxImages - currentImages.length);
     const filesToAdd = files.slice(0, remaining);
     if (filesToAdd.length === 0) return;
 
@@ -1087,4 +1127,10 @@ const ListItem = () => {
   );
 };
 
-export default ListItem;
+export default function ListItemWithBoundary() {
+  return (
+    <ListItemErrorBoundary>
+      <ListItem />
+    </ListItemErrorBoundary>
+  );
+}
