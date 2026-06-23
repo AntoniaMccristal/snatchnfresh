@@ -1,9 +1,9 @@
 import { Navigate, useLocation } from "react-router-dom";
-import { supabase } from "./lib/supabaseClient";
 import { useEffect, useState } from "react";
 import { hasCompletedPostalProfile } from "./lib/profileCompletion";
 import { getMfaRequirement } from "./lib/mfa";
 import { ensureProfileIdentity } from "./lib/profileIdentity";
+import { useAuth } from "@/lib/authContext";
 
 const PROFILE_COMPLETION_CACHE_PREFIX = "profile-complete:";
 
@@ -15,6 +15,7 @@ const ProtectedRoute = ({
   requireOnboarding?: boolean;
 }) => {
   const location = useLocation();
+  const { loading: authLoading, session } = useAuth();
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
@@ -22,6 +23,7 @@ const ProtectedRoute = ({
 
   useEffect(() => {
     let mounted = true;
+    if (authLoading) return;
 
     const withTimeout = async <T,>(promise: Promise<T>, ms: number, fallback: T): Promise<T> => {
       try {
@@ -106,22 +108,13 @@ const ProtectedRoute = ({
       setNeedsMfa(mfa.needsChallenge);
     };
 
-    const handleAuthStateChange = async (event: string, session: any) => {
-      if (event === "SIGNED_OUT") {
+    const handleSessionChange = async (nextSession: any) => {
+      if (!nextSession) {
         clearProfileCompletionCache(session?.user?.id ?? null);
       }
 
-      await resolveSessionState(session);
-    };
-
-    const checkUser = async () => {
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (!mounted) return;
-        await resolveSessionState(session);
+        await resolveSessionState(nextSession);
       } catch (error) {
         console.error("Protected route check failed", error);
         if (!mounted) return;
@@ -133,28 +126,12 @@ const ProtectedRoute = ({
       }
     };
 
-    checkUser();
-
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      try {
-        if (!mounted) return;
-        await handleAuthStateChange(_event, session);
-      } catch (error) {
-        console.error("Auth state handler failed", error);
-        if (!mounted) return;
-        setAuthenticated(false);
-        setNeedsOnboarding(false);
-        setNeedsMfa(false);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    });
+    void handleSessionChange(session);
 
     return () => {
       mounted = false;
-      listener.subscription.unsubscribe();
     };
-  }, []);
+  }, [authLoading, requireOnboarding, session]);
 
   if (loading) {
     return <div className="app-shell p-6">Checking your session...</div>;

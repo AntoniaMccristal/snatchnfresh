@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { supabase } from "./lib/supabaseClient";
 import { registerPushSubscription } from "@/lib/pushNotifications";
+import { AuthProvider, useAuth } from "@/lib/authContext";
 const Index = lazy(() => import("./pages/Index"));
 const Landing = lazy(() => import("./pages/Landing"));
 const Profile = lazy(() => import("./pages/Profile"));
@@ -52,51 +53,27 @@ function RouteFallback() {
 }
 
 function HomeRoute() {
-  const [loading, setLoading] = useState(true);
-  const [authenticated, setAuthenticated] = useState(false);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const syncSession = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (!mounted) return;
-        setAuthenticated(Boolean(session));
-      } catch (error) {
-        console.error("Home route session check failed", error);
-        if (!mounted) return;
-        setAuthenticated(false);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    void syncSession();
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
-      setAuthenticated(Boolean(session));
-      setLoading(false);
-    });
-
-    return () => {
-      mounted = false;
-      listener.subscription.unsubscribe();
-    };
-  }, []);
+  const { loading, session } = useAuth();
 
   if (loading) {
     return <RouteFallback />;
   }
 
-  return authenticated ? <Index /> : <Landing />;
+  return session ? <Index /> : <Landing />;
 }
 
-export default function App() {
+function PushSubscriptionSync() {
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user?.id) return;
+    void registerPushSubscription(user.id, supabase);
+  }, [user?.id]);
+
+  return null;
+}
+
+function AppContent() {
   const [showSplash, setShowSplash] = useState(true);
   const splashTimerRef = useRef<number | null>(null);
 
@@ -126,30 +103,9 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
-    let active = true;
-
-    const syncPushSubscription = async (session: any) => {
-      if (!active || !session?.user?.id) return;
-      await registerPushSubscription(session.user.id, supabase);
-    };
-
-    supabase.auth.getSession().then(({ data }) => {
-      void syncPushSubscription(data.session);
-    });
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      void syncPushSubscription(session);
-    });
-
-    return () => {
-      active = false;
-      listener.subscription.unsubscribe();
-    };
-  }, []);
-
   return (
     <BrowserRouter>
+      <PushSubscriptionSync />
       <ScrollToTop />
       <div style={{ paddingBottom: "80px" }}>
         <Suspense fallback={<RouteFallback />}>
@@ -266,5 +222,13 @@ export default function App() {
         </div>
       )}
     </BrowserRouter>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }

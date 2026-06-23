@@ -69,6 +69,7 @@ const Home = () => {
   const [bookingActionId, setBookingActionId] = useState<string | null>(null);
   const [bagCount, setBagCount] = useState(0);
   const [likedItems, setLikedItems] = useState<any[]>([]);
+  const [likedItemIds, setLikedItemIds] = useState<Set<string>>(new Set());
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -86,6 +87,7 @@ const Home = () => {
     setCurrentUserId(user?.id || null);
     if (!user) {
       setLikedItems([]);
+      setLikedItemIds(new Set());
       return;
     }
 
@@ -96,10 +98,13 @@ const Home = () => {
 
     if (likesError) {
       setLikedItems([]);
+      setLikedItemIds(new Set());
       return;
     }
 
     const likedIds = (likeRows || []).map((row) => row.item_id).filter(Boolean);
+    const likedSet = new Set(likedIds);
+    setLikedItemIds(likedSet);
     if (likedIds.length === 0) {
       setLikedItems([]);
       return;
@@ -446,6 +451,15 @@ const Home = () => {
     return scored.length > 0 ? scored : availableItems.slice(0, 4);
   }, [availableItems, likedItems]);
 
+  const handleItemLikeChange = useCallback((itemId: string, isLiked: boolean) => {
+    setLikedItemIds((prev) => {
+      const next = new Set(prev);
+      if (isLiked) next.add(itemId);
+      else next.delete(itemId);
+      return next;
+    });
+  }, []);
+
   const markAllRead = () => {
     setNotifications((prev) => {
       const next = prev.map((notification) => ({ ...notification, read: true }));
@@ -664,7 +678,13 @@ const Home = () => {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
           {filteredItems.map((item) => (
-            <ItemCard key={item.id} item={item} />
+            <ItemCard
+              key={item.id}
+              item={item}
+              initialLiked={likedItemIds.has(item.id)}
+              currentUserId={currentUserId}
+              onLikeChange={handleItemLikeChange}
+            />
           ))}
         </div>
       </div>
@@ -680,7 +700,13 @@ const Home = () => {
           </p>
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
             {aiPicks.map((item) => (
-              <ItemCard key={`ai-${item.id}`} item={item} />
+              <ItemCard
+                key={`ai-${item.id}`}
+                item={item}
+                initialLiked={likedItemIds.has(item.id)}
+                currentUserId={currentUserId}
+                onLikeChange={handleItemLikeChange}
+              />
             ))}
           </div>
         </div>

@@ -8,16 +8,25 @@ import { sendPushNotification } from "@/lib/pushNotifications";
 interface ItemCardProps {
   item: any;
   variant?: "grid" | "featured";
+  initialLiked?: boolean;
+  currentUserId?: string | null;
+  onLikeChange?: (itemId: string, liked: boolean) => void;
 }
 
-const ItemCard = ({ item, variant = "grid" }: ItemCardProps) => {
+const ItemCard = ({ item, variant = "grid", initialLiked, currentUserId, onLikeChange }: ItemCardProps) => {
   const navigate = useNavigate();
-  const [liked, setLiked] = useState(false);
+  const [liked, setLiked] = useState(Boolean(initialLiked));
   const [likesEnabled, setLikesEnabled] = useState(true);
-  const [loadingLikeState, setLoadingLikeState] = useState(true);
+  const [loadingLikeState, setLoadingLikeState] = useState(initialLiked === undefined);
   const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
+    if (initialLiked !== undefined) {
+      setLiked(Boolean(initialLiked));
+      setLoadingLikeState(false);
+      return;
+    }
+
     const loadLikeState = async () => {
       if (!item?.id) return;
 
@@ -62,7 +71,7 @@ const ItemCard = ({ item, variant = "grid" }: ItemCardProps) => {
     };
 
     loadLikeState();
-  }, [item?.id]);
+  }, [initialLiked, item?.id]);
 
   useEffect(() => {
     setImageFailed(false);
@@ -70,6 +79,11 @@ const ItemCard = ({ item, variant = "grid" }: ItemCardProps) => {
 
   async function toggleLike(e: MouseEvent<HTMLButtonElement>) {
     e.stopPropagation();
+
+    if (currentUserId === null) {
+      navigate("/auth");
+      return;
+    }
 
     const { data: userData } = await supabase.auth.getUser();
     const user = userData?.user;
@@ -97,6 +111,7 @@ const ItemCard = ({ item, variant = "grid" }: ItemCardProps) => {
       }
 
       setLiked(false);
+      onLikeChange?.(item.id, false);
       return;
     }
 
@@ -108,6 +123,7 @@ const ItemCard = ({ item, variant = "grid" }: ItemCardProps) => {
     if (error) {
       if (error.code === "23505") {
         setLiked(true);
+        onLikeChange?.(item.id, true);
         return;
       }
 
@@ -128,6 +144,7 @@ const ItemCard = ({ item, variant = "grid" }: ItemCardProps) => {
     }
 
     setLiked(true);
+    onLikeChange?.(item.id, true);
 
     if (ownerId && ownerId !== user.id) {
       const likerName =
