@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, MessageCircle } from "lucide-react";
+import { ArrowLeft, MessageCircle, Star } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { getItemImageUrl } from "@/lib/images";
@@ -11,12 +11,16 @@ export default function ClosetProfile() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<any[]>([]);
   const [displayName, setDisplayName] = useState<string>("");
+  const [username, setUsername] = useState<string>("");
+  const [avatarUrl, setAvatarUrl] = useState<string>("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
   const [followsEnabled, setFollowsEnabled] = useState(true);
+  const [averageRating, setAverageRating] = useState(0);
+  const [reviewCount, setReviewCount] = useState(0);
 
   useEffect(() => {
     const load = async () => {
@@ -64,12 +68,32 @@ export default function ClosetProfile() {
 
         const { data: profile, error } = await supabase
           .from("profiles")
-          .select("username,full_name")
+          .select("username,full_name,avatar_url")
           .eq("id", userId)
           .maybeSingle();
 
         if (!error && profile) {
           setDisplayName(profile.full_name || profile.username || "");
+          setUsername(profile.username || "");
+          setAvatarUrl(profile.avatar_url || "");
+        }
+
+        const { data: ratingsRows, error: ratingsError } = await supabase
+          .from("ratings")
+          .select("rating")
+          .eq("rated_user_id", userId);
+
+        const ratingsMissing =
+          ratingsError?.code === "42P01" ||
+          String(ratingsError?.message || "").toLowerCase().includes("relation");
+
+        if (!ratingsError && ratingsRows && ratingsRows.length > 0) {
+          const total = ratingsRows.reduce((sum: number, row: any) => sum + Number(row.rating || 0), 0);
+          setAverageRating(Number((total / ratingsRows.length).toFixed(1)));
+          setReviewCount(ratingsRows.length);
+        } else if (ratingsMissing || !ratingsRows?.length) {
+          setAverageRating(0);
+          setReviewCount(0);
         }
 
         const followersResult = await supabase
@@ -126,6 +150,16 @@ export default function ClosetProfile() {
     return `Closet ${userId.slice(0, 8)}`;
   }, [displayName, userId]);
 
+  const initials = useMemo(() => {
+    const source = displayName || username || "S";
+    return source
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "S";
+  }, [displayName, username]);
+
   if (loading) {
     return <div className="app-shell p-6">Loading closet...</div>;
   }
@@ -166,96 +200,152 @@ export default function ClosetProfile() {
   }
 
   return (
-    <div className="app-shell bg-warm-gradient pb-24 page-transition">
-      <header className="px-5 pt-[max(0.75rem,env(safe-area-inset-top))] pb-4 flex items-center gap-3">
-        <button
-          onClick={() => navigate(-1)}
-          className="w-9 h-9 rounded-full bg-card border border-border/60 flex items-center justify-center shadow-soft"
-        >
-          <ArrowLeft size={18} className="text-foreground" />
-        </button>
-        <div>
-          <h1 className="text-base font-display font-semibold text-foreground">{title}</h1>
-          <div className="flex items-center gap-2 text-xs">
-            <p className="text-muted-foreground">{items.length} listings</p>
-            {followsEnabled && (
-              <>
-                <span className="text-muted-foreground">·</span>
+    <div className="app-shell bg-white pb-24 page-transition">
+      <header className="md:sticky md:top-0 md:z-20 bg-white/95 md:backdrop-blur">
+        <div className="mx-auto max-w-4xl px-4 pt-8 pb-4 relative">
+          <button
+            onClick={() => navigate(-1)}
+            className="absolute left-4 top-8 w-9 h-9 rounded-full bg-white border border-border/60 flex items-center justify-center shadow-soft"
+          >
+            <ArrowLeft size={18} className="text-foreground" />
+          </button>
+
+          <div className="flex flex-col items-center text-center">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={displayName || username || "Profile"}
+                className="h-20 w-20 rounded-full object-cover"
+              />
+            ) : (
+              <div className="h-20 w-20 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold">
+                {initials}
+              </div>
+            )}
+
+            <h1 className="mt-3 text-2xl font-bold text-foreground">{displayName || title}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              @{username || (userId ? userId.slice(0, 8) : "closet")}
+            </p>
+
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-sm text-muted-foreground">
+              <span>{items.length} listings</span>
+              {followsEnabled && (
+                <>
+                  <span>·</span>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/connections/${userId}?tab=followers`)}
+                    className="hover:text-foreground"
+                  >
+                    {followersCount} Followers
+                  </button>
+                  <span>·</span>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/connections/${userId}?tab=following`)}
+                    className="hover:text-foreground"
+                  >
+                    {followingCount} Following
+                  </button>
+                </>
+              )}
+            </div>
+
+            {reviewCount > 0 && (
+              <button
+                type="button"
+                onClick={() => navigate(`/reviews/${userId}`)}
+                className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-foreground"
+              >
+                <Star size={15} className="fill-amber-500 text-amber-500" />
+                {averageRating} ({reviewCount} review{reviewCount === 1 ? "" : "s"})
+              </button>
+            )}
+
+            {userId && currentUserId !== userId && (
+              <div className="mt-4 grid grid-cols-2 gap-2 w-full max-w-xs">
                 <button
                   type="button"
-                  onClick={() => navigate(`/connections/${userId}?tab=followers`)}
-                  className="text-foreground hover:underline"
+                  onClick={() => navigate(`/messages?user=${userId}`)}
+                  className="h-10 rounded-full border border-border bg-white text-sm font-semibold inline-flex items-center justify-center gap-1.5"
                 >
-                  {followersCount} Followers
+                  <MessageCircle size={15} />
+                  Message
                 </button>
-                <span className="text-muted-foreground">·</span>
-                <button
-                  type="button"
-                  onClick={() => navigate(`/connections/${userId}?tab=following`)}
-                  className="text-foreground hover:underline"
-                >
-                  {followingCount} Following
-                </button>
-              </>
+                {followsEnabled && currentUserId ? (
+                  <button
+                    type="button"
+                    onClick={toggleFollow}
+                    disabled={followBusy}
+                    className={`h-10 rounded-full text-sm font-semibold disabled:opacity-60 ${
+                      isFollowing
+                        ? "border border-border bg-white text-foreground"
+                        : "bg-primary text-primary-foreground"
+                    }`}
+                  >
+                    {followBusy ? "..." : isFollowing ? "Unfollow" : "Follow"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => navigate("/auth")}
+                    className="h-10 rounded-full bg-primary text-primary-foreground text-sm font-semibold"
+                  >
+                    Follow
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>
-        <div className="ml-auto flex items-center gap-2">
-          {userId && currentUserId !== userId && (
-            <button
-              type="button"
-              onClick={() => navigate(`/messages?user=${userId}`)}
-              className="h-8 px-2.5 rounded-lg border border-border text-xs font-semibold inline-flex items-center gap-1.5"
-            >
-              <MessageCircle size={13} />
-              Message
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => navigate(`/reviews/${userId}`)}
-            className="h-8 px-2.5 rounded-lg border border-border text-xs font-semibold"
-          >
-            Reviews
-          </button>
-          {followsEnabled && currentUserId && currentUserId !== userId && (
-            <button
-              type="button"
-              onClick={toggleFollow}
-              disabled={followBusy}
-              className={`h-8 px-3 rounded-lg text-xs font-semibold disabled:opacity-60 ${
-                isFollowing
-                  ? "border border-border bg-card text-foreground"
-                  : "bg-primary text-primary-foreground"
-              }`}
-            >
-              {followBusy ? "..." : isFollowing ? "Following" : "Follow"}
-            </button>
-          )}
-        </div>
       </header>
 
-      <div className="mx-auto w-full max-w-7xl px-5 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-        {items.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => navigate(`/item/${item.id}`)}
-            className="text-left rounded-2xl border border-border/60 bg-card p-3 shadow-soft"
-          >
-            <img
-              src={getItemImageUrl(item.image_url, item.id, item.updated_at || item.created_at)}
-              alt={item.title}
-              className="w-full h-36 md:h-40 xl:h-44 object-cover rounded-xl"
-            />
-            <p className="mt-2 text-sm font-semibold text-foreground truncate">{item.title}</p>
-            <p className="text-xs text-muted-foreground">${item.price_per_day}/day</p>
-          </button>
-        ))}
+      <div className="mx-auto w-full max-w-4xl px-4">
+        <div className="md:hidden" style={{ columns: "2", columnGap: "8px" }}>
+          {items.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => navigate(`/item/${item.id}`)}
+              className="w-full text-left bg-transparent"
+              style={{ breakInside: "avoid", marginBottom: "8px" }}
+            >
+              <img
+                src={getItemImageUrl(item.image_url, item.id, item.updated_at || item.created_at)}
+                alt={item.title}
+                style={{ width: "100%", height: "auto", display: "block", borderRadius: "12px" }}
+              />
+              <p className="mt-1.5 text-[13px] font-semibold text-foreground truncate">{item.title}</p>
+              <p className="text-xs text-muted-foreground">${item.price_per_day}/day</p>
+            </button>
+          ))}
+        </div>
+
+        <div className="hidden md:block" style={{ columns: "4", columnGap: "12px" }}>
+          {items.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => navigate(`/item/${item.id}`)}
+              className="w-full text-left bg-transparent"
+              style={{ breakInside: "avoid", marginBottom: "12px" }}
+            >
+              <img
+                src={getItemImageUrl(item.image_url, item.id, item.updated_at || item.created_at)}
+                alt={item.title}
+                style={{ width: "100%", height: "auto", display: "block", borderRadius: "12px" }}
+              />
+              <p className="mt-1.5 text-[13px] font-semibold text-foreground truncate">{item.title}</p>
+              <p className="text-xs text-muted-foreground">${item.price_per_day}/day</p>
+            </button>
+          ))}
+        </div>
       </div>
 
       {items.length === 0 && (
-        <div className="px-5">
-          <div className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted-foreground bg-card">
+        <div className="mx-auto max-w-4xl px-4">
+          <div className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted-foreground bg-white">
             No listings found for this closet yet.
           </div>
         </div>
