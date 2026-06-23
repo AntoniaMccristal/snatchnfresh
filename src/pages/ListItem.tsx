@@ -396,8 +396,6 @@ const ListItem = () => {
     if (filesToAdd.length === 0) return;
 
     const optimizationMessages: string[] = [];
-    const previousCount = currentImages.length;
-
     try {
       for (const file of filesToAdd) {
         const valid = validateImageFile(file);
@@ -459,19 +457,6 @@ const ListItem = () => {
         title: filesToAdd.length > 1 ? `${filesToAdd.length} photos selected` : "Photo selected",
         description: optimizationMessages.join(" • "),
       });
-
-      if (previousCount === 0) {
-        setGeneratingListing(true);
-        const firstPreviewUrl = previewObjectUrlsRef.current[previewObjectUrlsRef.current.length - filesToAdd.length];
-        const generated = await generateListingFromImage(firstPreviewUrl, brand);
-        setTitle((current) => (current.trim() ? current : generated.title));
-        setDescription((current) => (current.trim() ? current : generated.description));
-        setLastGeneratedAt(Date.now());
-        toast({
-          title: "Suggested listing ready",
-          description: "Title and description were auto-filled from the cover photo. Review before publishing.",
-        });
-      }
     } catch (error: any) {
       toast({ title: "Image processing failed", description: error?.message || "Try another photo.", variant: "destructive" });
     } finally {
