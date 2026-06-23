@@ -389,14 +389,17 @@ const ListItem = () => {
   };
 
   async function handleImageSelect(fileList: FileList | null) {
-    const files = Array.from(fileList || []).slice(0, Math.max(0, maxImages - images.length));
-    if (files.length === 0) return;
+    const currentImages = images;
+    const files = Array.from(fileList || []);
+    const remaining = maxImages - currentImages.length;
+    const filesToAdd = files.slice(0, remaining);
+    if (filesToAdd.length === 0) return;
 
     const optimizationMessages: string[] = [];
-    const previousCount = images.length;
+    const previousCount = currentImages.length;
 
     try {
-      for (const file of files) {
+      for (const file of filesToAdd) {
         const valid = validateImageFile(file);
         if (!valid.ok) {
           toast({ title: "Image not accepted", description: valid.reason, variant: "destructive" });
@@ -453,13 +456,13 @@ const ListItem = () => {
       }
 
       toast({
-        title: files.length > 1 ? `${files.length} photos selected` : "Photo selected",
+        title: filesToAdd.length > 1 ? `${filesToAdd.length} photos selected` : "Photo selected",
         description: optimizationMessages.join(" • "),
       });
 
       if (previousCount === 0) {
         setGeneratingListing(true);
-        const firstPreviewUrl = previewObjectUrlsRef.current[previewObjectUrlsRef.current.length - files.length];
+        const firstPreviewUrl = previewObjectUrlsRef.current[previewObjectUrlsRef.current.length - filesToAdd.length];
         const generated = await generateListingFromImage(firstPreviewUrl, brand);
         setTitle((current) => (current.trim() ? current : generated.title));
         setDescription((current) => (current.trim() ? current : generated.description));
@@ -878,6 +881,7 @@ const ListItem = () => {
           ref={imageInputRef}
           type="file"
           accept="image/*"
+          multiple
           className="hidden"
           onChange={(e) => {
             void handleImageSelect(e.target.files);
