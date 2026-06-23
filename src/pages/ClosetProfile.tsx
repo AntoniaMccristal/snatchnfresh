@@ -202,7 +202,7 @@ export default function ClosetProfile() {
   return (
     <div className="app-shell bg-white pb-24 page-transition">
       <header className="md:sticky md:top-0 md:z-20 bg-white/95 md:backdrop-blur">
-        <div className="mx-auto max-w-4xl px-4 pt-8 pb-4 relative">
+        <div className="mx-auto max-w-6xl px-4 md:px-8 lg:px-12 pt-8 pb-4 relative">
           <button
             onClick={() => navigate(-1)}
             className="absolute left-4 top-8 w-9 h-9 rounded-full bg-white border border-border/60 flex items-center justify-center shadow-soft"
@@ -215,15 +215,15 @@ export default function ClosetProfile() {
               <img
                 src={avatarUrl}
                 alt={displayName || username || "Profile"}
-                className="h-20 w-20 rounded-full object-cover"
+                className="w-20 h-20 md:w-28 md:h-28 rounded-full object-cover"
               />
             ) : (
-              <div className="h-20 w-20 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold">
+              <div className="w-20 h-20 md:w-28 md:h-28 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl md:text-3xl font-bold">
                 {initials}
               </div>
             )}
 
-            <h1 className="mt-3 text-2xl font-bold text-foreground">{displayName || title}</h1>
+            <h1 className="mt-3 text-2xl md:text-3xl font-bold text-foreground">{displayName || title}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               @{username || (userId ? userId.slice(0, 8) : "closet")}
             </p>
@@ -301,28 +301,11 @@ export default function ClosetProfile() {
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-4xl px-4">
-        <div className="md:hidden" style={{ columns: "2", columnGap: "8px" }}>
-          {items.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => navigate(`/item/${item.id}`)}
-              className="w-full text-left bg-transparent"
-              style={{ breakInside: "avoid", marginBottom: "8px" }}
-            >
-              <img
-                src={getItemImageUrl(item.image_url, item.id, item.updated_at || item.created_at)}
-                alt={item.title}
-                style={{ width: "100%", height: "auto", display: "block", borderRadius: "12px" }}
-              />
-              <p className="mt-1.5 text-[13px] font-semibold text-foreground truncate">{item.title}</p>
-              <p className="text-xs text-muted-foreground">${item.price_per_day}/day</p>
-            </button>
-          ))}
-        </div>
-
-        <div className="hidden md:block" style={{ columns: "4", columnGap: "12px" }}>
+      <div className="mx-auto w-full max-w-7xl px-4 md:px-8 lg:px-12">
+        <div
+          className="[column-count:2] md:[column-count:3] lg:[column-count:4] xl:[column-count:5]"
+          style={{ columnGap: "12px" }}
+        >
           {items.map((item) => (
             <button
               key={item.id}
@@ -336,15 +319,15 @@ export default function ClosetProfile() {
                 alt={item.title}
                 style={{ width: "100%", height: "auto", display: "block", borderRadius: "12px" }}
               />
-              <p className="mt-1.5 text-[13px] font-semibold text-foreground truncate">{item.title}</p>
-              <p className="text-xs text-muted-foreground">${item.price_per_day}/day</p>
+              <p className="mt-2 text-sm font-semibold text-foreground truncate">{item.title}</p>
+              <p className="text-sm text-muted-foreground">${item.price_per_day}/day</p>
             </button>
           ))}
         </div>
       </div>
 
       {items.length === 0 && (
-        <div className="mx-auto max-w-4xl px-4">
+        <div className="mx-auto max-w-7xl px-4 md:px-8 lg:px-12">
           <div className="rounded-2xl border border-dashed border-border p-4 text-sm text-muted-foreground bg-white">
             No listings found for this closet yet.
           </div>
