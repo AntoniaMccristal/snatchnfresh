@@ -188,11 +188,11 @@ const ItemCard = ({ item, variant = "grid", initialLiked, currentUserId, onLikeC
       tabIndex={0}
       aria-label={`Open listing for ${item.title || "item"}`}
     >
-      <div className="relative overflow-hidden rounded-2xl bg-muted aspect-[3/4] shadow-soft">
+      <div className="relative overflow-hidden rounded-2xl bg-muted shadow-soft">
         <img
           src={imageSrc}
           alt={item.title || "Item"}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          className="block w-full h-auto object-cover transition-transform duration-500 group-hover:scale-105"
           onError={() => setImageFailed(true)}
         />
 

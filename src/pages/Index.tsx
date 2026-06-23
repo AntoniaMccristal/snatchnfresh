@@ -676,15 +676,28 @@ const Home = () => {
             <span className="font-semibold text-foreground">{filteredItems.length}</span> items near you
           </p>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+        <div className="md:hidden" style={{ columns: "2", columnGap: "8px" }}>
           {filteredItems.map((item) => (
-            <ItemCard
-              key={item.id}
-              item={item}
-              initialLiked={likedItemIds.has(item.id)}
-              currentUserId={currentUserId}
-              onLikeChange={handleItemLikeChange}
-            />
+            <div key={item.id} style={{ breakInside: "avoid", marginBottom: "8px" }}>
+              <ItemCard
+                item={item}
+                initialLiked={likedItemIds.has(item.id)}
+                currentUserId={currentUserId}
+                onLikeChange={handleItemLikeChange}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="hidden md:block" style={{ columns: "4", columnGap: "12px" }}>
+          {filteredItems.map((item) => (
+            <div key={item.id} style={{ breakInside: "avoid", marginBottom: "12px" }}>
+              <ItemCard
+                item={item}
+                initialLiked={likedItemIds.has(item.id)}
+                currentUserId={currentUserId}
+                onLikeChange={handleItemLikeChange}
+              />
+            </div>
           ))}
         </div>
       </div>
