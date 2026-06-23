@@ -452,9 +452,9 @@ export default function Messages() {
           })}
         </div>
 
-        <div className="rounded-2xl border border-border/60 bg-card p-3 flex flex-col max-h-[60vh]">
+        <div className="rounded-2xl border border-border/60 bg-card flex flex-col max-h-[60vh] overflow-hidden">
           {selectedPeerId && (
-            <div className="mb-2 p-3 rounded-2xl border border-border/50 bg-background space-y-3">
+            <div className="sticky top-0 z-10 border-b border-gray-100 bg-white p-3">
               <div className="flex items-center gap-3">
                 {selectedProfile?.avatar_url ? (
                   <img src={selectedProfile.avatar_url} alt={getDisplayName(selectedProfile)} className="w-11 h-11 rounded-full object-cover border border-border/40" />
@@ -475,68 +475,53 @@ export default function Messages() {
                   View profile
                 </button>
               </div>
-              {activeItem && (
-                <button
-                  type="button"
-                  onClick={() => navigate(`/item/${activeItem.id}`)}
-                  className="w-full text-left flex items-center gap-3 rounded-xl border border-border/50 bg-card p-2.5 hover:bg-muted/30 transition-colors"
-                >
-                  <img
-                    src={getItemImageUrl(activeItem.image_url, activeItem.id, activeItem.updated_at || activeItem.created_at)}
-                    alt={activeItem.title}
-                    className="w-12 h-12 rounded-lg object-cover border border-border/40"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11px] text-muted-foreground">Enquiry about listing</p>
-                    <p className="text-sm font-semibold text-foreground truncate">{activeItem.title}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Tap to open listing</p>
-                  </div>
-                </button>
-              )}
             </div>
           )}
-          <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+          {activeItem && (
+            <button
+              type="button"
+              onClick={() => navigate(`/item/${activeItem.id}`)}
+              className="flex items-center gap-3 border-b border-gray-100 bg-gray-50 p-3 text-left cursor-pointer"
+            >
+              <img
+                src={getItemImageUrl(activeItem.image_url, activeItem.id, activeItem.updated_at || activeItem.created_at)}
+                alt={activeItem.title}
+                className="w-12 h-12 rounded-lg object-cover border border-border/40"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] text-muted-foreground">Enquiry about listing</p>
+                <p className="text-sm font-semibold text-foreground truncate">{activeItem.title}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Tap to open listing</p>
+              </div>
+            </button>
+          )}
+          <div className="flex-1 overflow-y-auto space-y-3 px-3 py-3">
             {threadMessages.length === 0 && (
               <p className="text-xs text-muted-foreground">Start the conversation.</p>
             )}
             {threadMessages.map((message) => {
               const mine = message.sender_id === currentUserId;
-              const messageItem = message.item_id ? itemsById[message.item_id] : null;
               const senderProfile = profiles[message.sender_id];
               return (
-                <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                  <div className="max-w-[88%]">
+                <div key={message.id} className={mine ? "ml-auto max-w-[75%]" : "max-w-[75%]"}>
                     {!mine && (
                       <p className="mb-1 text-[11px] font-semibold text-foreground">
                         {getDisplayName(senderProfile)}
                       </p>
                     )}
-                    <div className={`rounded-2xl px-3 py-2 text-sm ${mine ? "bg-foreground text-background rounded-br-sm" : "bg-card border border-border/50 text-foreground rounded-bl-sm"}`}>
-                    {messageItem && (
-                      <div className={`mb-1.5 rounded-lg border ${mine ? "border-white/30 bg-white/10" : "border-border/40 bg-background/70"} p-1.5 flex items-center gap-1.5`}>
-                        <img
-                          src={getItemImageUrl(messageItem.image_url, messageItem.id, messageItem.updated_at || messageItem.created_at)}
-                          alt={messageItem.title}
-                          className="w-7 h-7 rounded object-cover"
-                        />
-                        <span className={`text-[11px] truncate ${mine ? "text-primary-foreground" : "text-foreground"}`}>
-                          {messageItem.title}
-                        </span>
-                      </div>
-                    )}
-                    <p>{message.body}</p>
-                    <p className={`text-[10px] mt-1 opacity-60 ${mine ? "text-background" : "text-muted-foreground"}`}>
+                    <div className={`rounded-2xl px-4 py-2.5 text-sm ${mine ? "bg-foreground text-background rounded-br-sm" : "bg-gray-100 text-foreground rounded-bl-sm"}`}>
+                      <p>{message.body}</p>
+                    </div>
+                    <p className={`text-xs text-muted-foreground mt-1 ${mine ? "text-right" : "text-left"}`}>
                       {formatTime(message.created_at)}
                     </p>
-                    </div>
-                  </div>
                 </div>
               );
             })}
           </div>
 
           {selectedPeerId && (
-            <div className="mt-2 flex gap-2">
+            <div className="border-t border-gray-100 p-3 flex gap-2">
               <input
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
