@@ -503,13 +503,13 @@ export default function Messages() {
               const mine = message.sender_id === currentUserId;
               const senderProfile = profiles[message.sender_id];
               return (
-                <div key={message.id} className={mine ? "ml-auto max-w-[75%]" : "max-w-[75%]"}>
+                <div key={message.id} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
                     {!mine && (
                       <p className="mb-1 text-[11px] font-semibold text-foreground">
                         {getDisplayName(senderProfile)}
                       </p>
                     )}
-                    <div className={`rounded-2xl px-4 py-2.5 text-sm ${mine ? "bg-foreground text-background rounded-br-sm" : "bg-gray-100 text-foreground rounded-bl-sm"}`}>
+                    <div className={`max-w-[70%] w-fit rounded-2xl px-4 py-2.5 text-sm ${mine ? "ml-auto bg-foreground text-background rounded-br-sm" : "bg-gray-100 text-foreground rounded-bl-sm"}`}>
                       <p>{message.body}</p>
                     </div>
                     <p className={`text-xs text-muted-foreground mt-1 ${mine ? "text-right" : "text-left"}`}>
