@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Send } from "lucide-react";
+import { ArrowLeft, PenSquare, Send, X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { getItemImageUrl } from "@/lib/images";
@@ -21,6 +21,8 @@ type MessageRow = {
   item_id?: string | null;
   read_at?: string | null;
 };
+
+type InboxFilter = "all" | "buying" | "selling";
 
 function getDisplayName(profile: any) {
   return (
@@ -53,6 +55,11 @@ export default function Messages() {
   const [itemsById, setItemsById] = useState<Record<string, any>>({});
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<InboxFilter>("all");
+  const [showCompose, setShowCompose] = useState(false);
+  const [composeQuery, setComposeQuery] = useState("");
+  const [composeResults, setComposeResults] = useState<any[]>([]);
+  const [composeLoading, setComposeLoading] = useState(false);
 
   const targetUserId = params.get("user") || "";
   const targetItemId = params.get("item") || null;
@@ -111,7 +118,7 @@ export default function Messages() {
       if (itemIds.length > 0) {
         const { data: itemRows } = await supabase
           .from("items")
-          .select("id,title,image_url,updated_at,created_at")
+          .select("id,title,image_url,updated_at,created_at,owner_id,user_id")
           .in("id", itemIds);
         const byItemId: Record<string, any> = {};
         (itemRows || []).forEach((item: any) => {
@@ -168,10 +175,55 @@ export default function Messages() {
     );
   }, [messages, currentUserId]);
 
+  const filteredConversations = useMemo(() => {
+    if (activeFilter === "all" || !currentUserId) return conversations;
+
+    return conversations.filter((conversation) => {
+      const linkedItem = conversation.itemId ? itemsById[conversation.itemId] : null;
+      const ownerId = linkedItem?.owner_id || linkedItem?.user_id;
+      if (!ownerId) return false;
+
+      if (activeFilter === "selling") return ownerId === currentUserId;
+      return ownerId !== currentUserId;
+    });
+  }, [activeFilter, conversations, currentUserId, itemsById]);
+
   const selectedPeerId = targetUserId || conversations[0]?.peerId || "";
   const activeItemId = targetItemId || conversations.find((c) => c.peerId === selectedPeerId)?.itemId || null;
   const selectedProfile = profiles[selectedPeerId];
   const activeItem = activeItemId ? itemsById[activeItemId] : null;
+
+  useEffect(() => {
+    const searchProfiles = async () => {
+      const query = composeQuery.trim();
+      if (!showCompose || query.length < 2) {
+        setComposeResults([]);
+        setComposeLoading(false);
+        return;
+      }
+
+      setComposeLoading(true);
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id,username,full_name,avatar_url")
+        .ilike("username", `%${query}%`)
+        .limit(10);
+
+      if (error) {
+        console.error("Profile search failed", error);
+        setComposeResults([]);
+      } else {
+        setComposeResults((data || []).filter((profile: any) => profile.id !== currentUserId));
+      }
+      setComposeLoading(false);
+    };
+
+    const timeout = window.setTimeout(() => {
+      void searchProfiles();
+    }, 200);
+
+    return () => window.clearTimeout(timeout);
+  }, [composeQuery, currentUserId, showCompose]);
 
   useEffect(() => {
     const loadExplicitContext = async () => {
@@ -198,7 +250,7 @@ export default function Messages() {
       if (activeItemId && !itemsById[activeItemId]) {
         const { data: directItem } = await supabase
           .from("items")
-          .select("id,title,image_url,updated_at,created_at")
+          .select("id,title,image_url,updated_at,created_at,owner_id,user_id")
           .eq("id", activeItemId)
           .maybeSingle();
 
@@ -320,61 +372,81 @@ export default function Messages() {
         <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-full bg-card border border-border/60 flex items-center justify-center shadow-soft">
           <ArrowLeft size={18} className="text-foreground" />
         </button>
-        <div>
-          <h1 className="text-lg font-display font-semibold text-foreground">Inbox</h1>
-          <p className="text-xs text-muted-foreground">Message lenders and renters</p>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl font-bold text-foreground">Inbox</h1>
+          <p className="text-sm text-muted-foreground">Messages</p>
         </div>
+        <button
+          onClick={() => setShowCompose(true)}
+          className="w-9 h-9 rounded-full bg-foreground text-background flex items-center justify-center"
+          aria-label="Compose new message"
+        >
+          <PenSquare size={16} />
+        </button>
       </header>
 
+      <div className="px-5 pb-3 flex gap-2">
+        {[
+          { id: "all", label: "All" },
+          { id: "buying", label: "Buying" },
+          { id: "selling", label: "Selling" },
+        ].map((tab) => {
+          const active = activeFilter === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveFilter(tab.id as InboxFilter)}
+              className={`rounded-full px-4 py-1.5 text-sm ${
+                active
+                  ? "bg-foreground text-background font-semibold"
+                  : "border border-border text-foreground"
+              }`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
       <div className="px-5 grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-3">
-        <div className="rounded-2xl border border-border/60 bg-card p-2 space-y-1 max-h-[60vh] overflow-y-auto">
-          {conversations.length === 0 && (
-            <p className="text-xs text-muted-foreground p-2">No conversations yet.</p>
+        <div className="rounded-2xl border border-border/60 bg-card overflow-hidden max-h-[60vh] overflow-y-auto">
+          {filteredConversations.length === 0 && (
+            <p className="text-sm text-muted-foreground p-4">No conversations yet.</p>
           )}
-          {conversations.map((conv) => {
+          {filteredConversations.map((conv) => {
             const profile = profiles[conv.peerId];
             const linkedItem = conv.itemId ? itemsById[conv.itemId] : null;
             const active = conv.peerId === selectedPeerId;
+            const itemImage = linkedItem?.image_url
+              ? getItemImageUrl(linkedItem.image_url, linkedItem.id, linkedItem.updated_at || linkedItem.created_at)
+              : "";
             return (
               <button
                 key={conv.peerId}
                 onClick={() => navigate(`/messages?user=${conv.peerId}${conv.itemId ? `&item=${conv.itemId}` : ""}`)}
-                className={`relative w-full text-left rounded-xl p-3.5 border transition-colors ${
-                  active ? "border-primary/40 bg-primary/5 border-l-2 border-l-primary" : "border-border/40 hover:bg-muted/20"
+                className={`w-full text-left flex items-center gap-3 p-4 border-b border-gray-100 transition-colors ${
+                  active ? "bg-gray-50" : "bg-white hover:bg-gray-50"
                 }`}
               >
-                <div className="flex items-start gap-3">
-                  {profile?.avatar_url ? (
-                    <img src={profile.avatar_url} alt={getDisplayName(profile)} className="w-10 h-10 rounded-full object-cover" />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-bold">
-                      {getInitial(profile)}
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-foreground truncate">{getDisplayName(profile)}</p>
-                    <p className="text-[11px] text-muted-foreground">{getUsernameTag(profile)}</p>
-                    <p className="mt-1 text-xs text-muted-foreground truncate">{conv.last.body}</p>
-                    {linkedItem && (
-                      <div className="mt-1.5 inline-flex items-center gap-1 rounded-md border border-border/50 bg-background px-1.5 py-1 max-w-full">
-                        <img
-                          src={getItemImageUrl(linkedItem.image_url, linkedItem.id, linkedItem.updated_at || linkedItem.created_at)}
-                          alt={linkedItem.title}
-                          className="w-6 h-6 rounded object-cover"
-                        />
-                        <span className="text-[10px] text-foreground truncate">{linkedItem.title}</span>
-                      </div>
-                    )}
+                {itemImage ? (
+                  <img src={itemImage} alt={linkedItem?.title || "Listing"} className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
+                ) : profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt={getDisplayName(profile)} className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
+                ) : (
+                  <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center text-base font-bold flex-shrink-0">
+                    {getInitial(profile)}
                   </div>
-                  <div className="flex min-h-full flex-col items-end justify-between gap-2">
-                    {conv.unread > 0 && (
-                      <span className="inline-flex min-w-5 h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold items-center justify-center">
-                        {conv.unread}
-                      </span>
-                    )}
-                    <p className="text-[10px] text-muted-foreground">{formatTime(conv.last.created_at)}</p>
-                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-base text-foreground truncate">{getDisplayName(profile)}</p>
+                  <p className="text-sm text-muted-foreground truncate">{conv.last.body}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{formatTime(conv.last.created_at)}</p>
                 </div>
+                {conv.unread > 0 && (
+                  <span className="inline-flex min-w-6 h-6 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-bold items-center justify-center flex-shrink-0">
+                    {conv.unread}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -483,6 +555,79 @@ export default function Messages() {
           )}
         </div>
       </div>
+
+      {showCompose && (
+        <div className="fixed inset-0 z-[120] flex items-end bg-black/30">
+          <button
+            type="button"
+            className="absolute inset-0 cursor-default"
+            onClick={() => setShowCompose(false)}
+            aria-label="Close new message"
+          />
+          <section className="relative w-full rounded-t-3xl bg-white p-5 shadow-[0_-18px_50px_rgba(0,0,0,0.18)] animate-in slide-in-from-bottom duration-200">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-foreground">New message</h2>
+              <button
+                type="button"
+                onClick={() => setShowCompose(false)}
+                className="w-9 h-9 rounded-full border border-border flex items-center justify-center"
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <input
+              value={composeQuery}
+              onChange={(event) => setComposeQuery(event.target.value)}
+              placeholder="Search by username..."
+              className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-sm outline-none focus:ring-2 focus:ring-foreground/10"
+              autoFocus
+            />
+
+            <div className="mt-4 max-h-[42vh] overflow-y-auto">
+              {composeQuery.trim().length > 0 && composeQuery.trim().length < 2 && (
+                <p className="px-1 py-3 text-sm text-muted-foreground">Type at least 2 characters.</p>
+              )}
+              {composeLoading && (
+                <p className="px-1 py-3 text-sm text-muted-foreground">Searching...</p>
+              )}
+              {!composeLoading && composeQuery.trim().length >= 2 && composeResults.length === 0 && (
+                <p className="px-1 py-3 text-sm text-muted-foreground">No users found.</p>
+              )}
+              {composeResults.map((profile) => (
+                <button
+                  key={profile.id}
+                  type="button"
+                  onClick={() => {
+                    setShowCompose(false);
+                    setComposeQuery("");
+                    setComposeResults([]);
+                    navigate(`/messages?user=${profile.id}`);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-2xl p-3 text-left hover:bg-gray-50"
+                >
+                  {profile.avatar_url ? (
+                    <img
+                      src={profile.avatar_url}
+                      alt={getDisplayName(profile)}
+                      className="h-11 w-11 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-11 w-11 rounded-full bg-muted flex items-center justify-center text-sm font-bold">
+                      {getInitial(profile)}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-foreground truncate">{profile.username || getDisplayName(profile)}</p>
+                    <p className="text-xs text-muted-foreground truncate">{profile.full_name || "Snatch'n member"}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
