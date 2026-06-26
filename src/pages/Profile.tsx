@@ -357,6 +357,35 @@ export default function Profile() {
     loadProfile();
   }
 
+  async function handleLenderCancel(bookingId: string) {
+    const confirmed = window.confirm(
+      "Are you sure you want to cancel this rental? If payment was made, the renter will be refunded.",
+    );
+    if (!confirmed) return;
+
+    setUpdatingOwnerBookingId(bookingId);
+    const { error } = await supabase
+      .from("bookings")
+      .update({ status: "cancelled", updated_at: new Date().toISOString() })
+      .eq("id", bookingId);
+    setUpdatingOwnerBookingId(null);
+
+    if (error) { alert(error.message); return; }
+
+    const booking = ownerBookings.find((row) => row.id === bookingId);
+    if (booking?.renter_id) {
+      await sendPushNotification({
+        user_id: booking.renter_id,
+        title: "Rental cancelled",
+        body: "The lender cancelled your rental. If payment was made, your refund will be processed.",
+        url: "/profile",
+      });
+    }
+
+    alert("Rental cancelled. The renter will be notified.");
+    loadProfile();
+  }
+
   async function deleteWardrobeItem(itemId: string) {
     const confirmed = window.confirm("Delete this listing? This cannot be undone.");
     if (!confirmed) return;
@@ -810,12 +839,32 @@ export default function Profile() {
               )}
             </section>
 
+            {ownerBookings.filter((booking) =>
+              booking.end_date && new Date(booking.end_date) < new Date() && !booking.item_returned_at,
+            ).length > 0 && (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 mb-4">
+                <p className="text-sm font-bold text-amber-900">
+                  You have rentals past their return date
+                </p>
+                <p className="text-xs text-amber-800 mt-1">
+                  Please confirm items have been returned to release your payout.
+                </p>
+              </div>
+            )}
+
             {/* Active rentals */}
             {ownerBookings.length > 0 && (
               <section>
                 <h2 className="text-sm font-bold text-foreground mb-3">Active rentals</h2>
                 <div className="space-y-3">
-                  {ownerBookings.map((booking) => (
+                  {ownerBookings.map((booking) => {
+                    const bookingStatus = String(booking.status || "").toLowerCase();
+                    const rentalEndPassed = booking.end_date && new Date(booking.end_date) < new Date();
+                    const showReturnButton = !booking.item_returned_at
+                      && (rentalEndPassed || ["approved", "paid"].includes(bookingStatus));
+                    const showCancelButton = ["approved", "paid"].includes(bookingStatus);
+
+                    return (
                     <div key={booking.id} className="bg-card rounded-2xl border border-border/50 shadow-soft p-3">
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-sm font-semibold text-foreground">{formatDate(booking.start_date)} – {formatDate(booking.end_date)}</p>
@@ -849,7 +898,7 @@ export default function Profile() {
                       <div className="flex gap-2 mt-2">
                         <button onClick={() => markDelivered(booking.id)} disabled={updatingOwnerBookingId === booking.id} className="flex-1 h-8 rounded-xl border border-border text-xs font-semibold disabled:opacity-60">Mark delivered</button>
                       </div>
-                      {!booking.item_returned_at && booking.status !== "completed" && (
+                      {showReturnButton && (
                         <button
                           onClick={() => markReturned(booking.id)}
                           disabled={updatingOwnerBookingId === booking.id}
@@ -858,8 +907,18 @@ export default function Profile() {
                           {updatingOwnerBookingId === booking.id ? "Working..." : "Item returned to me - release payout"}
                         </button>
                       )}
+                      {showCancelButton && (
+                        <button
+                          onClick={() => handleLenderCancel(booking.id)}
+                          disabled={updatingOwnerBookingId === booking.id}
+                          className="w-full h-9 rounded-xl border border-red-200 text-red-600 text-xs font-semibold mt-2 disabled:opacity-60"
+                        >
+                          Cancel rental (renter didn&apos;t show)
+                        </button>
+                      )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </section>
             )}
@@ -889,6 +948,7 @@ export default function Profile() {
                   && booking.delivery_method !== "pickup"
                   && booking.tracking_status === "delivered";
                 const lenderId = booking.owner_id || booking.item?.owner_id || booking.item?.user_id;
+                const isCancelled = bookingStatus === "cancelled";
 
                 return (
                   <div key={booking.id} className="bg-card rounded-2xl border border-border/50 shadow-soft p-3">
@@ -918,6 +978,17 @@ export default function Profile() {
                       >
                         <MessageCircle size={13} /> Message lender
                       </button>
+                    )}
+
+                    {isCancelled && (
+                      <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3">
+                        <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                          Cancelled by lender
+                        </span>
+                        <p className="text-xs text-red-700 mt-2">
+                          Your payment will be refunded within 5-10 business days.
+                        </p>
+                      </div>
                     )}
 
                     {canConfirmReturn && (
