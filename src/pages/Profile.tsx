@@ -84,6 +84,9 @@ export default function Profile() {
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
   const [updatingOwnerBookingId, setUpdatingOwnerBookingId] = useState<string | null>(null);
   const [trackingDrafts, setTrackingDrafts] = useState<Record<string, string>>({});
+  const [disputeBookingId, setDisputeBookingId] = useState<string | null>(null);
+  const [disputeDescription, setDisputeDescription] = useState("");
+  const [submittingDispute, setSubmittingDispute] = useState(false);
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [mfaBusy, setMfaBusy] = useState(false);
   const [mfaSetupFactorId, setMfaSetupFactorId] = useState<string | null>(null);
@@ -384,6 +387,64 @@ export default function Profile() {
 
     alert("Rental cancelled. The renter will be notified.");
     loadProfile();
+  }
+
+  async function submitDispute(bookingId: string, description: string) {
+    if (!user) return;
+
+    setSubmittingDispute(true);
+    try {
+      const booking = ownerBookings.find((row) => row.id === bookingId);
+      if (!booking) return;
+
+      const { data: dispute, error } = await supabase
+        .from("disputes")
+        .insert({
+          booking_id: bookingId,
+          raised_by: user.id,
+          against_user: booking.renter_id,
+          reason: "item_damaged",
+          description: description.trim(),
+          status: "open",
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const { error: bookingError } = await supabase
+        .from("bookings")
+        .update({ has_dispute: true, dispute_id: dispute.id, payout_status: "held" })
+        .eq("id", bookingId);
+
+      if (bookingError) throw bookingError;
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (token) {
+        await fetch("https://kkyapornrqdhksrmcaij.supabase.co/functions/v1/send-booking-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            type: "dispute_raised",
+            booking_id: bookingId,
+            dispute_id: dispute.id,
+            description: description.trim(),
+            lender_email: user.email,
+            renter_id: booking.renter_id,
+          }),
+        });
+      }
+
+      alert("Dispute raised. The Snatch'n team will review and contact you within 24 hours. Your payout has been held until resolved.");
+      setDisputeBookingId(null);
+      setDisputeDescription("");
+      loadProfile();
+    } catch (err: any) {
+      alert(err.message || "Could not submit dispute.");
+    } finally {
+      setSubmittingDispute(false);
+    }
   }
 
   async function deleteWardrobeItem(itemId: string) {
@@ -899,13 +960,22 @@ export default function Profile() {
                         <button onClick={() => markDelivered(booking.id)} disabled={updatingOwnerBookingId === booking.id} className="flex-1 h-8 rounded-xl border border-border text-xs font-semibold disabled:opacity-60">Mark delivered</button>
                       </div>
                       {showReturnButton && (
-                        <button
-                          onClick={() => markReturned(booking.id)}
-                          disabled={updatingOwnerBookingId === booking.id}
-                          className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-bold text-sm mt-2 disabled:opacity-60"
-                        >
-                          {updatingOwnerBookingId === booking.id ? "Working..." : "Item returned to me - release payout"}
-                        </button>
+                        <div className="space-y-2 mt-2">
+                          <button
+                            onClick={() => markReturned(booking.id)}
+                            disabled={updatingOwnerBookingId === booking.id}
+                            className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-xs font-bold disabled:opacity-60"
+                          >
+                            {updatingOwnerBookingId === booking.id ? "Working..." : "Item returned in good condition - release payout"}
+                          </button>
+                          <button
+                            onClick={() => setDisputeBookingId(booking.id)}
+                            disabled={updatingOwnerBookingId === booking.id}
+                            className="w-full h-10 rounded-xl border border-red-300 text-red-600 text-xs font-semibold disabled:opacity-60"
+                          >
+                            Item returned damaged - raise a dispute
+                          </button>
+                        </div>
                       )}
                       {showCancelButton && (
                         <button
@@ -1200,6 +1270,54 @@ export default function Profile() {
         </section>
 
       </div>
+      {disputeBookingId && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
+          <div className="bg-card rounded-t-3xl p-6 w-full max-w-lg space-y-4">
+            <h2 className="text-lg font-bold text-foreground">Raise a dispute</h2>
+            <p className="text-sm text-muted-foreground">
+              Describe the damage to the item. We will review your case and be in touch within 24 hours.
+            </p>
+            <textarea
+              value={disputeDescription}
+              onChange={(e) => setDisputeDescription(e.target.value)}
+              placeholder="Describe what happened - e.g. stain on front, broken zip, torn hem..."
+              className="w-full h-32 rounded-2xl border border-border p-3 text-sm bg-background resize-none"
+            />
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+              <p className="text-xs text-amber-800">
+                Before raising a formal dispute, have you messaged the renter about the damage?
+                We recommend attempting to resolve directly first.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  const booking = ownerBookings.find((row) => row.id === disputeBookingId);
+                  setDisputeBookingId(null);
+                  setDisputeDescription("");
+                  if (booking) navigate(`/messages?user=${booking.renter_id}&item=${booking.item_id}`);
+                }}
+                className="flex-1 h-11 rounded-xl border border-border text-sm font-semibold"
+              >
+                Message renter first
+              </button>
+              <button
+                onClick={() => submitDispute(disputeBookingId, disputeDescription)}
+                disabled={submittingDispute || disputeDescription.trim().length < 10}
+                className="flex-1 h-11 rounded-xl bg-red-600 text-white text-sm font-bold disabled:opacity-50"
+              >
+                {submittingDispute ? "Submitting..." : "Raise dispute"}
+              </button>
+            </div>
+            <button
+              onClick={() => { setDisputeBookingId(null); setDisputeDescription(""); }}
+              className="w-full text-xs text-muted-foreground py-2"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
       {cropSrc && <AvatarCropper imageSrc={cropSrc} onSave={handleCropSave} onCancel={() => setCropSrc("")} />}
     </div>
   );
