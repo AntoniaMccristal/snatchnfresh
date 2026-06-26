@@ -38,7 +38,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!subs?.length) return res.status(200).json({ sent: 0 });
 
-    const payload = JSON.stringify({ title, body, url: url || "/" });
+    const payload = JSON.stringify({
+      title,
+      body,
+      url: url || "/messages",
+      icon: "/pwa-192x192.png",
+      badge: "/pwa-192x192.png",
+    });
     const results = await Promise.allSettled(
       subs.map((sub: any) =>
         webpush.sendNotification(

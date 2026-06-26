@@ -301,6 +301,7 @@ export default function Messages() {
       error = result.error;
       if (!error && result.data) {
         setMessages((prev) => [result.data as MessageRow, ...prev]);
+        const messageText = String(payload.body || "");
         setDraft("");
         const receiverId = selectedPeerId;
 
@@ -326,9 +327,9 @@ export default function Messages() {
               },
               body: JSON.stringify({
                 user_id: receiverId,
-                title: "New message on Snatch'n",
-                body: `${senderName} sent you a message`,
-                url: "/messages",
+                title: `${senderName || "New message"} on Snatch'n`,
+                body: messageText.length > 100 ? messageText.slice(0, 97) + "..." : messageText,
+                url: `/messages?user=${receiverId}`,
               }),
             });
           }
