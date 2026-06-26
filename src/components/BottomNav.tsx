@@ -1,5 +1,7 @@
 import { Compass, Home, MessageCircle, PlusSquare, User } from "lucide-react";
+import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
+import { supabase } from "@/lib/supabaseClient";
 
 const navItems = [
   { to: "/", label: "Home", icon: Home, end: true },
@@ -11,9 +13,32 @@ const navItems = [
 
 export default function BottomNav() {
   const location = useLocation();
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const hiddenOnPaths = ["/auth", "/booking", "/payment-success", "/onboarding"];
   const shouldHide = hiddenOnPaths.some((path) => location.pathname.startsWith(path));
+
+  useEffect(() => {
+    const fetchUnread = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setUnreadCount(0);
+        return;
+      }
+
+      const { count } = await supabase
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .eq("receiver_id", user.id)
+        .is("read_at", null);
+
+      setUnreadCount(count || 0);
+    };
+
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   if (shouldHide) {
     return null;
@@ -47,7 +72,18 @@ export default function BottomNav() {
                     <Icon size={20} className="text-background" />
                   </div>
                 ) : (
-                  <Icon size={20} />
+                  item.label === "Inbox" ? (
+                    <div className="relative">
+                      <MessageCircle size={22} />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold leading-4 text-center">
+                          {unreadCount > 99 ? "99+" : unreadCount}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <Icon size={20} />
+                  )
                 )}
                 <span className={`mt-1 text-[12px] ${isActive ? "font-bold" : "font-medium"}`}>{item.label}</span>
                 {!isList && (
