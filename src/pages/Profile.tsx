@@ -387,31 +387,28 @@ export default function Profile() {
 
   async function handleLenderCancel(bookingId: string) {
     const confirmed = window.confirm(
-      "Are you sure you want to cancel this rental? If payment was made, the renter will be refunded.",
+      "Cancel this rental? If payment was made, the renter will be automatically refunded in full.",
     );
     if (!confirmed) return;
-
     setUpdatingOwnerBookingId(bookingId);
-    const { error } = await supabase
-      .from("bookings")
-      .update({ status: "cancelled", updated_at: new Date().toISOString() })
-      .eq("id", bookingId);
-    setUpdatingOwnerBookingId(null);
-
-    if (error) { alert(error.message); return; }
-
-    const booking = ownerBookings.find((row) => row.id === bookingId);
-    if (booking?.renter_id) {
-      await sendPushNotification({
-        user_id: booking.renter_id,
-        title: "Rental cancelled",
-        body: "The lender cancelled your rental. If payment was made, your refund will be processed.",
-        url: "/profile",
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) { navigate("/auth"); return; }
+      const res = await fetch("/api/refund-booking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ booking_id: bookingId, reason: "lender_cancelled" }),
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Could not cancel booking.");
+      alert(data.message || "Booking cancelled.");
+      loadProfile();
+    } catch (err: any) {
+      alert(err?.message || "Could not cancel booking.");
+    } finally {
+      setUpdatingOwnerBookingId(null);
     }
-
-    alert("Rental cancelled. The renter will be notified.");
-    loadProfile();
   }
 
   async function submitDispute(bookingId: string, description: string) {
