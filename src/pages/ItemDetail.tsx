@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageCircle, ShoppingBag } from "lucide-react";
+import { ArrowLeft, MessageCircle, Share2, ShoppingBag } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { getItemImageUrl } from "@/lib/images";
 import "react-datepicker/dist/react-datepicker.css";
@@ -321,6 +321,24 @@ const ItemDetail = () => {
   const itemUnavailable = Boolean(item.availability_status && item.availability_status !== "available");
   const imageVersion = item.updated_at || item.created_at;
   const selectedImage = images[Math.min(activeImageIndex, images.length - 1)] || images[0];
+  const handleShare = async () => {
+    const shareData = {
+      title: item.title,
+      text: `Check out ${item.title} on Snatch'n - rent it for $${item.price_per_day}/day!`,
+      url: `https://snatchn.com.au/item/${item.id}`,
+    };
+
+    try {
+      if (navigator.share && (!navigator.canShare || navigator.canShare(shareData))) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(`https://snatchn.com.au/item/${item.id}`);
+        alert("Link copied to clipboard!");
+      }
+    } catch (err) {
+      // User cancelled share.
+    }
+  };
 
   return (
     <div className="app-shell p-5 md:p-8">
@@ -337,31 +355,49 @@ const ItemDetail = () => {
               {images.length === 0 ? (
                 <div className="w-full aspect-[3/4] rounded-2xl bg-muted" />
               ) : images.length === 1 ? (
-                <img
-                  src={getItemImageUrl(images[0], item.id, imageVersion)}
-                  alt={item.title}
-                  className="w-full aspect-[3/4] object-cover rounded-2xl"
-                />
+                <div className="relative">
+                  <img
+                    src={getItemImageUrl(images[0], item.id, imageVersion)}
+                    alt={item.title}
+                    className="w-full aspect-[3/4] object-cover rounded-2xl"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleShare}
+                    className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-soft"
+                  >
+                    <Share2 size={15} className="text-foreground" />
+                  </button>
+                </div>
               ) : (
                 <div className="space-y-3">
-                  <div
-                    ref={carouselRef}
-                    onScroll={(event) => {
-                      const node = event.currentTarget;
-                      if (!node.clientWidth) return;
-                      const nextIndex = Math.round(node.scrollLeft / node.clientWidth);
-                      setActiveImageIndex(Math.max(0, Math.min(images.length - 1, nextIndex)));
-                    }}
-                    className="flex overflow-x-auto snap-x snap-mandatory rounded-2xl"
-                  >
-                    {images.map((src, index) => (
-                      <img
-                        key={`${src}-${index}`}
-                        src={getItemImageUrl(src, item.id, imageVersion)}
-                        alt={`${item.title} photo ${index + 1}`}
-                        className="w-full shrink-0 snap-start aspect-[3/4] object-cover"
-                      />
-                    ))}
+                  <div className="relative">
+                    <div
+                      ref={carouselRef}
+                      onScroll={(event) => {
+                        const node = event.currentTarget;
+                        if (!node.clientWidth) return;
+                        const nextIndex = Math.round(node.scrollLeft / node.clientWidth);
+                        setActiveImageIndex(Math.max(0, Math.min(images.length - 1, nextIndex)));
+                      }}
+                      className="flex overflow-x-auto snap-x snap-mandatory rounded-2xl"
+                    >
+                      {images.map((src, index) => (
+                        <img
+                          key={`${src}-${index}`}
+                          src={getItemImageUrl(src, item.id, imageVersion)}
+                          alt={`${item.title} photo ${index + 1}`}
+                          className="w-full shrink-0 snap-start aspect-[3/4] object-cover"
+                        />
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleShare}
+                      className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-soft"
+                    >
+                      <Share2 size={15} className="text-foreground" />
+                    </button>
                   </div>
                   <div className="flex items-center justify-center gap-2">
                     {images.map((_, index) => (
@@ -376,15 +412,24 @@ const ItemDetail = () => {
             </div>
 
             <div className="hidden md:block space-y-3">
-              {images.length === 0 ? (
-                <div className="w-full max-w-[500px] aspect-[3/4] max-h-[600px] rounded-2xl bg-muted" />
-              ) : (
-                <img
-                  src={getItemImageUrl(selectedImage, item.id, imageVersion)}
-                  alt={item.title}
-                  className="w-full max-w-[500px] aspect-[3/4] max-h-[600px] object-contain rounded-2xl bg-muted"
-                />
-              )}
+              <div className="relative max-w-[500px]">
+                {images.length === 0 ? (
+                  <div className="w-full max-w-[500px] aspect-[3/4] max-h-[600px] rounded-2xl bg-muted" />
+                ) : (
+                  <img
+                    src={getItemImageUrl(selectedImage, item.id, imageVersion)}
+                    alt={item.title}
+                    className="w-full max-w-[500px] aspect-[3/4] max-h-[600px] object-contain rounded-2xl bg-muted"
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-soft"
+                >
+                  <Share2 size={15} className="text-foreground" />
+                </button>
+              </div>
 
               {images.length > 1 && (
                 <div className="flex gap-2 overflow-x-auto pb-1">
