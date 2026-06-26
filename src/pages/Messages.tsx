@@ -208,6 +208,35 @@ export default function Messages() {
   const selectedProfile = profiles[selectedPeerId];
   const activeItem = activeItemId ? itemsById[activeItemId] : null;
 
+  const markMessagesAsRead = useCallback(async (peerId: string, userId: string) => {
+    const readAt = new Date().toISOString();
+
+    const { error } = await supabase
+      .from("messages")
+      .update({ read_at: readAt })
+      .eq("receiver_id", userId)
+      .eq("sender_id", peerId)
+      .is("read_at", null);
+
+    if (error) {
+      console.error("Failed to mark messages as read", error);
+      return;
+    }
+
+    setMessages((prev) =>
+      prev.map((message) =>
+        message.receiver_id === userId && message.sender_id === peerId && !message.read_at
+          ? { ...message, read_at: readAt }
+          : message,
+      ),
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!selectedPeerId || !currentUserId || !messagesEnabled) return;
+    void markMessagesAsRead(selectedPeerId, currentUserId);
+  }, [currentUserId, markMessagesAsRead, messagesEnabled, selectedPeerId]);
+
   useEffect(() => {
     const searchProfiles = async () => {
       const query = composeQuery.trim();

@@ -1,5 +1,5 @@
 import { Compass, Home, MessageCircle, PlusSquare, User } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { clearAppBadgeCount, setAppBadgeCount } from "@/lib/pushNotifications";
@@ -19,30 +19,47 @@ export default function BottomNav() {
   const hiddenOnPaths = ["/auth", "/booking", "/payment-success", "/onboarding"];
   const shouldHide = hiddenOnPaths.some((path) => location.pathname.startsWith(path));
 
+  const fetchUnread = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setUnreadCount(0);
+      void clearAppBadgeCount();
+      return;
+    }
+
+    const { count } = await supabase
+      .from("messages")
+      .select("id", { count: "exact", head: true })
+      .eq("receiver_id", user.id)
+      .is("read_at", null);
+
+    const nextUnreadCount = count || 0;
+    setUnreadCount(nextUnreadCount);
+    void setAppBadgeCount(nextUnreadCount);
+  }, []);
+
   useEffect(() => {
-    const fetchUnread = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setUnreadCount(0);
-        void clearAppBadgeCount();
-        return;
-      }
-
-      const { count } = await supabase
-        .from("messages")
-        .select("id", { count: "exact", head: true })
-        .eq("receiver_id", user.id)
-        .is("read_at", null);
-
-      const nextUnreadCount = count || 0;
-      setUnreadCount(nextUnreadCount);
-      void setAppBadgeCount(nextUnreadCount);
-    };
-
     fetchUnread();
     const interval = setInterval(fetchUnread, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchUnread]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("unread-messages")
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "messages",
+      }, () => {
+        void fetchUnread();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchUnread]);
 
   if (shouldHide) {
     return null;
