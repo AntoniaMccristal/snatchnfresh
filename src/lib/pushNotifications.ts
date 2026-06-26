@@ -54,6 +54,42 @@ export async function sendPushNotification(payload: {
   }
 }
 
+type BadgingNavigator = Navigator & {
+  setAppBadge?: (contents?: number) => Promise<void>;
+  clearAppBadge?: () => Promise<void>;
+};
+
+export async function setAppBadgeCount(unreadCount: number) {
+  if (typeof navigator === "undefined") return;
+
+  const badgingNavigator = navigator as BadgingNavigator;
+  if (!("setAppBadge" in badgingNavigator) || typeof badgingNavigator.setAppBadge !== "function") return;
+
+  try {
+    if (unreadCount > 0) {
+      await badgingNavigator.setAppBadge(unreadCount);
+      return;
+    }
+
+    await clearAppBadgeCount();
+  } catch (error) {
+    console.error("Could not set app badge:", error);
+  }
+}
+
+export async function clearAppBadgeCount() {
+  if (typeof navigator === "undefined") return;
+
+  const badgingNavigator = navigator as BadgingNavigator;
+  if (!("clearAppBadge" in badgingNavigator) || typeof badgingNavigator.clearAppBadge !== "function") return;
+
+  try {
+    await badgingNavigator.clearAppBadge();
+  } catch (error) {
+    console.error("Could not clear app badge:", error);
+  }
+}
+
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");

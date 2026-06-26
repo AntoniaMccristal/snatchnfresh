@@ -2,6 +2,7 @@ import { Compass, Home, MessageCircle, PlusSquare, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
+import { clearAppBadgeCount, setAppBadgeCount } from "@/lib/pushNotifications";
 
 const navItems = [
   { to: "/", label: "Home", icon: Home, end: true },
@@ -23,6 +24,7 @@ export default function BottomNav() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setUnreadCount(0);
+        void clearAppBadgeCount();
         return;
       }
 
@@ -32,7 +34,9 @@ export default function BottomNav() {
         .eq("receiver_id", user.id)
         .is("read_at", null);
 
-      setUnreadCount(count || 0);
+      const nextUnreadCount = count || 0;
+      setUnreadCount(nextUnreadCount);
+      void setAppBadgeCount(nextUnreadCount);
     };
 
     fetchUnread();

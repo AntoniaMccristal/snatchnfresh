@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { getItemImageUrl } from "@/lib/images";
 import { usePageRefresh } from "@/hooks/usePageRefresh";
+import { clearAppBadgeCount } from "@/lib/pushNotifications";
 
 function formatTime(value?: string) {
   if (!value) return "";
@@ -64,6 +65,10 @@ export default function Messages() {
 
   const targetUserId = params.get("user") || "";
   const targetItemId = params.get("item") || null;
+
+  useEffect(() => {
+    void clearAppBadgeCount();
+  }, []);
 
   useEffect(() => {
     if (targetUserId) setMobileView("chat");
