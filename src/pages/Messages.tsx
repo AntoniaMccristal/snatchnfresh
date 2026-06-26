@@ -62,6 +62,7 @@ export default function Messages() {
   const [composeResults, setComposeResults] = useState<any[]>([]);
   const [composeLoading, setComposeLoading] = useState(false);
   const [mobileView, setMobileView] = useState<"list" | "chat">("list");
+  const [conversationBlocked, setConversationBlocked] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const targetUserId = params.get("user") || "";
@@ -208,6 +209,43 @@ export default function Messages() {
   const selectedProfile = profiles[selectedPeerId];
   const activeItem = activeItemId ? itemsById[activeItemId] : null;
 
+  const checkBlocked = useCallback(async (otherUserId: string, userId: string) => {
+    const { data, error } = await supabase
+      .from("blocks")
+      .select("id")
+      .or(`and(blocker_id.eq.${userId},blocked_id.eq.${otherUserId}),and(blocker_id.eq.${otherUserId},blocked_id.eq.${userId})`)
+      .limit(1);
+
+    const blocksMissing =
+      error?.code === "42P01" ||
+      String(error?.message || "").toLowerCase().includes("relation");
+
+    if (error && !blocksMissing) {
+      console.error("Block check failed", error);
+      return false;
+    }
+
+    return (data || []).length > 0;
+  }, []);
+
+  useEffect(() => {
+    if (!selectedPeerId || !currentUserId) {
+      setConversationBlocked(false);
+      return;
+    }
+
+    let cancelled = false;
+    const runCheck = async () => {
+      const blocked = await checkBlocked(selectedPeerId, currentUserId);
+      if (!cancelled) setConversationBlocked(blocked);
+    };
+
+    void runCheck();
+    return () => {
+      cancelled = true;
+    };
+  }, [checkBlocked, currentUserId, selectedPeerId]);
+
   const markMessagesAsRead = useCallback(async (peerId: string, userId: string) => {
     const readAt = new Date().toISOString();
 
@@ -328,6 +366,13 @@ export default function Messages() {
   async function sendMessage() {
     if (!messagesEnabled || !currentUserId || !selectedPeerId) return;
     if (!draft.trim()) return;
+
+    const blocked = conversationBlocked || await checkBlocked(selectedPeerId, currentUserId);
+    if (blocked) {
+      setConversationBlocked(true);
+      alert("You cannot message this user.");
+      return;
+    }
 
     setSending(true);
 
@@ -579,7 +624,13 @@ export default function Messages() {
             <div ref={messagesEndRef} />
           </div>
 
-          {selectedPeerId && (
+          {selectedPeerId && conversationBlocked && (
+            <div className="border-t border-gray-100 p-4 text-center text-sm text-muted-foreground">
+              You cannot message this user.
+            </div>
+          )}
+
+          {selectedPeerId && !conversationBlocked && (
             <div className="border-t border-gray-100 p-3 flex gap-2">
               <input
                 value={draft}

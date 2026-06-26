@@ -75,21 +75,43 @@ const Home = () => {
 
   const loadHomeFeed = useCallback(async () => {
     const { data, error } = await supabase.from("items").select("*").order("created_at", { ascending: false });
+    let fetchedItems = data || [];
 
     if (error) {
       console.error("Error fetching items:", error);
-    } else {
-      setItems(data || []);
+      fetchedItems = [];
     }
 
     const { data: userData } = await supabase.auth.getUser();
     const user = userData?.user;
     setCurrentUserId(user?.id || null);
     if (!user) {
+      setItems(fetchedItems);
       setLikedItems([]);
       setLikedItemIds(new Set());
       return;
     }
+
+    const { data: blockedByData, error: blockedByError } = await supabase
+      .from("blocks")
+      .select("blocker_id")
+      .eq("blocked_id", user.id);
+
+    const blocksMissing =
+      blockedByError?.code === "42P01" ||
+      String(blockedByError?.message || "").toLowerCase().includes("relation");
+
+    if (blockedByError && !blocksMissing) {
+      console.error("Error fetching blocked users:", blockedByError);
+    }
+
+    if (!blockedByError) {
+      const blockedByIds = new Set((blockedByData || []).map((row) => row.blocker_id));
+      fetchedItems = fetchedItems.filter((item) =>
+        !blockedByIds.has(item.owner_id) && !blockedByIds.has(item.user_id),
+      );
+    }
+    setItems(fetchedItems);
 
     const { data: likeRows, error: likesError } = await supabase
       .from("likes")

@@ -332,6 +332,30 @@ const Booking = () => {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
       if (!token) { navigate("/auth"); return; }
+      const userId = sessionData.session?.user?.id;
+      const ownerId = item.owner_id || item.user_id;
+
+      if (userId && ownerId) {
+        const { data: blockCheck, error: blockError } = await supabase
+          .from("blocks")
+          .select("id")
+          .eq("blocker_id", ownerId)
+          .eq("blocked_id", userId)
+          .maybeSingle();
+
+        const blocksMissing =
+          blockError?.code === "42P01" ||
+          String(blockError?.message || "").toLowerCase().includes("relation");
+
+        if (blockError && !blocksMissing) {
+          throw blockError;
+        }
+
+        if (blockCheck) {
+          setErrorType("You are unable to book this item.");
+          return;
+        }
+      }
 
       const controller = new AbortController();
       const timeout = window.setTimeout(() => controller.abort(), 25000);

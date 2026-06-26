@@ -21,6 +21,7 @@ export default function ClosetProfile() {
   const [followsEnabled, setFollowsEnabled] = useState(true);
   const [averageRating, setAverageRating] = useState(0);
   const [reviewCount, setReviewCount] = useState(0);
+  const [isBlocked, setIsBlocked] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -134,6 +135,25 @@ export default function ClosetProfile() {
             setIsFollowing(false);
           }
         }
+
+        if (me && me !== userId) {
+          const { data: blockRow, error: blockError } = await supabase
+            .from("blocks")
+            .select("id")
+            .eq("blocker_id", me)
+            .eq("blocked_id", userId)
+            .maybeSingle();
+
+          const blocksMissing =
+            blockError?.code === "42P01" ||
+            String(blockError?.message || "").toLowerCase().includes("relation");
+
+          if (!blockError || blocksMissing) {
+            setIsBlocked(Boolean(blockRow));
+          }
+        } else {
+          setIsBlocked(false);
+        }
       } catch (error) {
         console.error("Closet profile load error", error);
       } finally {
@@ -196,6 +216,44 @@ export default function ClosetProfile() {
       alert(error?.message || "Could not update follow status.");
     } finally {
       setFollowBusy(false);
+    }
+  }
+
+  async function handleBlock() {
+    if (!userId) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+    if (user.id === userId) return;
+
+    try {
+      if (isBlocked) {
+        const { error } = await supabase
+          .from("blocks")
+          .delete()
+          .eq("blocker_id", user.id)
+          .eq("blocked_id", userId);
+        if (error) throw error;
+        setIsBlocked(false);
+        return;
+      }
+
+      const confirmed = window.confirm(
+        "Block this user? They will not be able to message you or book your items.",
+      );
+      if (!confirmed) return;
+
+      const { error } = await supabase.from("blocks").insert({
+        blocker_id: user.id,
+        blocked_id: userId,
+      });
+      if (error) throw error;
+      setIsBlocked(true);
+    } catch (error: any) {
+      alert(error?.message || "Could not update block status.");
     }
   }
 
@@ -264,37 +322,46 @@ export default function ClosetProfile() {
             )}
 
             {userId && currentUserId !== userId && (
-              <div className="mt-4 grid grid-cols-2 gap-2 w-full max-w-xs">
+              <div className="mt-4 w-full max-w-xs">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/messages?user=${userId}`)}
+                    className="h-10 rounded-full border border-border bg-white text-sm font-semibold inline-flex items-center justify-center gap-1.5"
+                  >
+                    <MessageCircle size={15} />
+                    Message
+                  </button>
+                  {followsEnabled && currentUserId ? (
+                    <button
+                      type="button"
+                      onClick={toggleFollow}
+                      disabled={followBusy}
+                      className={`h-10 rounded-full text-sm font-semibold disabled:opacity-60 ${
+                        isFollowing
+                          ? "border border-border bg-white text-foreground"
+                          : "bg-primary text-primary-foreground"
+                      }`}
+                    >
+                      {followBusy ? "..." : isFollowing ? "Unfollow" : "Follow"}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => navigate("/auth")}
+                      className="h-10 rounded-full bg-primary text-primary-foreground text-sm font-semibold"
+                    >
+                      Follow
+                    </button>
+                  )}
+                </div>
                 <button
                   type="button"
-                  onClick={() => navigate(`/messages?user=${userId}`)}
-                  className="h-10 rounded-full border border-border bg-white text-sm font-semibold inline-flex items-center justify-center gap-1.5"
+                  onClick={handleBlock}
+                  className="text-xs text-muted-foreground underline mt-2"
                 >
-                  <MessageCircle size={15} />
-                  Message
+                  {isBlocked ? "Unblock user" : "Block user"}
                 </button>
-                {followsEnabled && currentUserId ? (
-                  <button
-                    type="button"
-                    onClick={toggleFollow}
-                    disabled={followBusy}
-                    className={`h-10 rounded-full text-sm font-semibold disabled:opacity-60 ${
-                      isFollowing
-                        ? "border border-border bg-white text-foreground"
-                        : "bg-primary text-primary-foreground"
-                    }`}
-                  >
-                    {followBusy ? "..." : isFollowing ? "Unfollow" : "Follow"}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => navigate("/auth")}
-                    className="h-10 rounded-full bg-primary text-primary-foreground text-sm font-semibold"
-                  >
-                    Follow
-                  </button>
-                )}
               </div>
             )}
           </div>
