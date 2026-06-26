@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageCircle, Share2, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Flag, MessageCircle, Share2, ShoppingBag } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { getItemImageUrl } from "@/lib/images";
 import "react-datepicker/dist/react-datepicker.css";
@@ -9,6 +9,7 @@ import { usePageRefresh } from "@/hooks/usePageRefresh";
 import ItemCard from "@/components/ItemCard";
 
 const DatePicker = lazy(() => import("react-datepicker"));
+const REPORT_REASONS = ["Fake or counterfeit", "Stolen item", "Inappropriate content", "Wrong category", "Other"];
 
 function formatDateForInput(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -96,6 +97,8 @@ const ItemDetail = () => {
   const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [similarSearched, setSimilarSearched] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [submittingReport, setSubmittingReport] = useState(false);
   const carouselRef = useRef<HTMLDivElement | null>(null);
 
   // Fetch item
@@ -339,6 +342,66 @@ const ItemDetail = () => {
       // User cancelled share.
     }
   };
+  const canReport = Boolean(currentUserId && !isOwner);
+  const submitReport = async (reason: string) => {
+    if (!currentUserId) {
+      navigate("/auth");
+      return;
+    }
+
+    setSubmittingReport(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        navigate("/auth");
+        return;
+      }
+
+      await fetch("https://kkyapornrqdhksrmcaij.supabase.co/functions/v1/send-booking-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          type: "item_reported",
+          item_id: item.id,
+          item_title: item.title,
+          item_owner_id: ownerId,
+          reporter_id: currentUserId,
+          reason,
+          url: `https://snatchn.com.au/item/${item.id}`,
+        }),
+      });
+
+      setShowReportModal(false);
+      alert("Thanks for reporting this. We'll review it within 24 hours.");
+    } catch (error: any) {
+      alert(error?.message || "Could not submit report.");
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
+  const imageActions = (
+    <div className="absolute top-3 right-3 flex gap-2">
+      {canReport && (
+        <button
+          type="button"
+          onClick={() => setShowReportModal(true)}
+          className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-soft"
+          aria-label="Report listing"
+        >
+          <Flag size={15} className="text-foreground" />
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={handleShare}
+        className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-soft"
+        aria-label="Share listing"
+      >
+        <Share2 size={15} className="text-foreground" />
+      </button>
+    </div>
+  );
 
   return (
     <div className="app-shell p-5 md:p-8">
@@ -361,13 +424,7 @@ const ItemDetail = () => {
                     alt={item.title}
                     className="w-full aspect-[3/4] object-cover rounded-2xl"
                   />
-                  <button
-                    type="button"
-                    onClick={handleShare}
-                    className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-soft"
-                  >
-                    <Share2 size={15} className="text-foreground" />
-                  </button>
+                  {imageActions}
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -391,13 +448,7 @@ const ItemDetail = () => {
                         />
                       ))}
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleShare}
-                      className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-soft"
-                    >
-                      <Share2 size={15} className="text-foreground" />
-                    </button>
+                    {imageActions}
                   </div>
                   <div className="flex items-center justify-center gap-2">
                     {images.map((_, index) => (
@@ -422,13 +473,7 @@ const ItemDetail = () => {
                     className="w-full max-w-[500px] aspect-[3/4] max-h-[600px] object-contain rounded-2xl bg-muted"
                   />
                 )}
-                <button
-                  type="button"
-                  onClick={handleShare}
-                  className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-soft"
-                >
-                  <Share2 size={15} className="text-foreground" />
-                </button>
+                {imageActions}
               </div>
 
               {images.length > 1 && (
@@ -608,6 +653,43 @@ const ItemDetail = () => {
           </section>
         )}
       </div>
+      {showReportModal && (
+        <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/50">
+          <button
+            type="button"
+            className="absolute inset-0 cursor-default"
+            onClick={() => setShowReportModal(false)}
+            aria-label="Close report listing"
+          />
+          <div className="relative w-full max-w-lg rounded-t-3xl bg-card p-6 shadow-[0_-18px_50px_rgba(0,0,0,0.18)]">
+            <h2 className="text-lg font-bold text-foreground">Report listing</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Tell us what is wrong with this listing. We will review it within 24 hours.
+            </p>
+            <div className="mt-4 space-y-2">
+              {REPORT_REASONS.map((reason) => (
+                <button
+                  key={reason}
+                  type="button"
+                  onClick={() => submitReport(reason)}
+                  disabled={submittingReport}
+                  className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-left text-sm font-semibold text-foreground disabled:opacity-50"
+                >
+                  {reason}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowReportModal(false)}
+              disabled={submittingReport}
+              className="mt-4 w-full py-2 text-xs font-semibold text-muted-foreground disabled:opacity-50"
+            >
+              {submittingReport ? "Submitting..." : "Cancel"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
