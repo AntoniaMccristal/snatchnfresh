@@ -6,7 +6,7 @@ import { clearAppBadgeCount, setAppBadgeCount } from "@/lib/pushNotifications";
 
 const navItems = [
   { to: "/", label: "Home", icon: Home, end: true },
-  { to: "/discover", label: "Search", icon: Compass },
+  { to: "/search", label: "Search", icon: Compass },
   { to: "/list", label: "List", icon: PlusSquare },
   { to: "/messages", label: "Inbox", icon: MessageCircle },
   { to: "/profile", label: "Profile", icon: User },
@@ -79,7 +79,12 @@ export default function BottomNav() {
             key={item.to}
             to={item.to}
             end={item.end}
-            onClick={() => window.scrollTo({ top: 0, left: 0, behavior: "auto" })}
+            onClick={() => {
+              if (item.to === "/search" && location.pathname === "/search") {
+                window.dispatchEvent(new Event("snatchn:focus-search"));
+              }
+              window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+            }}
             className={({ isActive }) =>
               `flex min-w-[64px] flex-col items-center justify-center px-2 py-1 text-sm transition-all ${
                 isActive ? "text-foreground font-bold" : "text-muted-foreground"

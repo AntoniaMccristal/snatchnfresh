@@ -11,6 +11,7 @@ const ListItem = lazy(() => import("./pages/ListItem"));
 const ItemDetail = lazy(() => import("./pages/ItemDetail"));
 const Booking = lazy(() => import("./pages/Booking"));
 const Discover = lazy(() => import("./pages/Discover"));
+const Search = lazy(() => import("./pages/Search"));
 const ClosetProfile = lazy(() => import("./pages/ClosetProfile"));
 const Auth = lazy(() => import("./Auth"));
 const AuthMfa = lazy(() => import("./pages/AuthMfa"));
@@ -112,6 +113,7 @@ function AppContent() {
           <Routes>
             <Route path="/" element={<HomeRoute />} />
             <Route path="/discover" element={<Discover />} />
+            <Route path="/search" element={<Search />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/auth/mfa" element={<AuthMfa />} />
             <Route
