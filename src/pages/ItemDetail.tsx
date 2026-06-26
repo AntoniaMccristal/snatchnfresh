@@ -318,6 +318,7 @@ const ItemDetail = () => {
   }
   const ownerId = item.owner_id || item.user_id;
   const isOwner = Boolean(ownerId && currentUserId === ownerId);
+  const itemUnavailable = Boolean(item.availability_status && item.availability_status !== "available");
   const imageVersion = item.updated_at || item.created_at;
   const selectedImage = images[Math.min(activeImageIndex, images.length - 1)] || images[0];
 
@@ -409,6 +410,16 @@ const ItemDetail = () => {
           </div>
 
           <div className="space-y-5">
+            {itemUnavailable && (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <p className="text-sm font-bold text-amber-900">Back soon</p>
+                <p className="text-xs text-amber-800 mt-1">
+                  This item has just been returned and is being prepared for its next rental.
+                  Check back soon!
+                </p>
+              </div>
+            )}
+
             {/* Title */}
             <div>
               <h1 className="text-xl font-bold">{item.title}</h1>
@@ -518,10 +529,10 @@ const ItemDetail = () => {
                   )}
                   <button
                     onClick={handleContinueToBooking}
-                    disabled={!startDate || !endDate || isContinuing}
+                    disabled={itemUnavailable || !startDate || !endDate || isContinuing}
                     className="flex-1 h-12 bg-primary text-white py-3 rounded-xl font-semibold disabled:opacity-50 active:scale-[0.99] transition-all"
                   >
-                    {isContinuing ? "Preparing booking..." : "Request to Rent →"}
+                    {itemUnavailable ? "Back soon" : isContinuing ? "Preparing booking..." : "Request to Rent →"}
                   </button>
                 </div>
               </div>

@@ -207,7 +207,13 @@ const ItemCard = ({ item, variant = "grid", initialLiked, currentUserId, onLikeC
           />
         </button>
 
-        {item.condition && (
+        {item.availability_status && item.availability_status !== "available" && (
+          <div className="absolute top-2 left-2 bg-white/90 text-foreground text-[9px] font-bold px-2 py-1 rounded-full">
+            Back soon
+          </div>
+        )}
+
+        {item.condition && !(item.availability_status && item.availability_status !== "available") && (
           <div className="absolute top-3 left-3 px-2 py-1 text-[10px] font-semibold bg-white/80 rounded-full shadow-soft">
             {item.condition}
           </div>

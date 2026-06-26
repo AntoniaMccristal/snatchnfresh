@@ -87,6 +87,8 @@ export default function Profile() {
   const [disputeBookingId, setDisputeBookingId] = useState<string | null>(null);
   const [disputeDescription, setDisputeDescription] = useState("");
   const [submittingDispute, setSubmittingDispute] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [returningBookingId, setReturningBookingId] = useState<string | null>(null);
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [mfaBusy, setMfaBusy] = useState(false);
   const [mfaSetupFactorId, setMfaSetupFactorId] = useState<string | null>(null);
@@ -337,27 +339,50 @@ export default function Profile() {
     loadProfile();
   }
 
-  async function markReturned(bookingId: string) {
-    setUpdatingOwnerBookingId(bookingId);
-    const { error } = await supabase.from("bookings").update({ item_returned_at: new Date().toISOString() }).eq("id", bookingId);
-    setUpdatingOwnerBookingId(null);
-    if (error) { alert(error.message || "Could not mark returned."); return; }
+  async function handleReturnWithStatus(bookingId: string, itemStatus: "available" | "needs_cleaning" | "needs_repair") {
     const booking = ownerBookings.find((row) => row.id === bookingId);
-    if (booking?.renter_id) {
-      await sendPushNotification({
-        user_id: booking.renter_id,
-        title: "Return marked complete",
-        body: "The lender marked your rental as returned.",
-        url: "/profile",
-      });
-    }
+    if (!booking) return;
+
+    setUpdatingOwnerBookingId(bookingId);
     try {
+      const { error: bookingError } = await supabase.from("bookings").update({
+        item_returned_at: new Date().toISOString(),
+        status: "completed",
+      }).eq("id", bookingId);
+      if (bookingError) throw bookingError;
+
+      const { error: itemError } = await supabase.from("items").update({
+        availability_status: itemStatus,
+      }).eq("id", booking.item_id);
+      if (itemError) throw itemError;
+
+      if (booking.renter_id) {
+        await sendPushNotification({
+          user_id: booking.renter_id,
+          title: "Return marked complete",
+          body: "The lender marked your rental as returned.",
+          url: "/profile",
+        });
+      }
+
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
       if (token) await fetch("/api/release-payout", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ booking_id: bookingId }) });
-    } catch (payoutError) { console.error("Auto payout release check failed", payoutError); }
-    alert("Return marked. Payout release is handled automatically by Snatch'n.");
-    loadProfile();
+
+      setShowReturnModal(false);
+      setReturningBookingId(null);
+
+      if (itemStatus === "available") {
+        alert("Return confirmed and payout released! Your item is live again.");
+      } else {
+        alert("Return confirmed and payout released! Your item is marked as unavailable. Go to your wardrobe to relist it when ready.");
+      }
+      loadProfile();
+    } catch (err: any) {
+      alert(err?.message || "Could not confirm return.");
+    } finally {
+      setUpdatingOwnerBookingId(null);
+    }
   }
 
   async function handleLenderCancel(bookingId: string) {
@@ -875,6 +900,13 @@ export default function Profile() {
                             alt={item.title}
                             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                           />
+                          {item.availability_status && item.availability_status !== "available" && (
+                            <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center">
+                              <span className="bg-white text-foreground text-[10px] font-bold px-3 py-1.5 rounded-full">
+                                {item.availability_status === "needs_cleaning" ? "Needs cleaning" : "Needs repair"}
+                              </span>
+                            </div>
+                          )}
                           <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={(e) => { e.stopPropagation(); navigate(`/list/${item.id}`); }}
@@ -894,6 +926,17 @@ export default function Profile() {
                         <p className="mt-1.5 text-xs font-bold text-foreground truncate">{item.title}</p>
                         <p className="text-[11px] text-muted-foreground">${item.price_per_day}/day</p>
                       </button>
+                      {item.availability_status && item.availability_status !== "available" && (
+                        <button
+                          onClick={async () => {
+                            await supabase.from("items").update({ availability_status: "available" }).eq("id", item.id);
+                            loadProfile();
+                          }}
+                          className="w-full mt-1 h-7 rounded-xl border border-primary text-primary text-[10px] font-bold"
+                        >
+                          Mark as available
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -962,7 +1005,7 @@ export default function Profile() {
                       {showReturnButton && (
                         <div className="space-y-2 mt-2">
                           <button
-                            onClick={() => markReturned(booking.id)}
+                            onClick={() => { setReturningBookingId(booking.id); setShowReturnModal(true); }}
                             disabled={updatingOwnerBookingId === booking.id}
                             className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-xs font-bold disabled:opacity-60"
                           >
@@ -1270,6 +1313,54 @@ export default function Profile() {
         </section>
 
       </div>
+      {showReturnModal && returningBookingId && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
+          <div className="bg-card rounded-t-3xl p-6 w-full max-w-lg space-y-4">
+            <h2 className="text-lg font-bold text-foreground">Item returned!</h2>
+            <p className="text-sm text-muted-foreground">
+              Is this item ready to be listed again straight away?
+            </p>
+            <div className="space-y-2">
+              <button
+                onClick={() => handleReturnWithStatus(returningBookingId, "available")}
+                className="w-full h-12 rounded-2xl bg-primary text-primary-foreground font-bold text-sm text-left px-4 flex items-center gap-3"
+              >
+                <span className="text-xl">OK</span>
+                <div>
+                  <p className="font-bold">Ready to list again</p>
+                  <p className="text-xs opacity-75">Item is clean and in great condition</p>
+                </div>
+              </button>
+              <button
+                onClick={() => handleReturnWithStatus(returningBookingId, "needs_cleaning")}
+                className="w-full h-12 rounded-2xl border border-border text-foreground font-semibold text-sm text-left px-4 flex items-center gap-3"
+              >
+                <span className="text-xl">Wash</span>
+                <div>
+                  <p className="font-bold">Needs a clean first</p>
+                  <p className="text-xs text-muted-foreground">Mark as unavailable until you relist it</p>
+                </div>
+              </button>
+              <button
+                onClick={() => handleReturnWithStatus(returningBookingId, "needs_repair")}
+                className="w-full h-12 rounded-2xl border border-border text-foreground font-semibold text-sm text-left px-4 flex items-center gap-3"
+              >
+                <span className="text-xl">Fix</span>
+                <div>
+                  <p className="font-bold">Needs repairs</p>
+                  <p className="text-xs text-muted-foreground">Mark as unavailable until fixed</p>
+                </div>
+              </button>
+            </div>
+            <button
+              onClick={() => { setShowReturnModal(false); setReturningBookingId(null); }}
+              className="w-full text-xs text-muted-foreground py-2"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
       {disputeBookingId && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
           <div className="bg-card rounded-t-3xl p-6 w-full max-w-lg space-y-4">
