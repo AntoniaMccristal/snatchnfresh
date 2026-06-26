@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, PenSquare, Send, X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
@@ -62,9 +62,14 @@ export default function Messages() {
   const [composeResults, setComposeResults] = useState<any[]>([]);
   const [composeLoading, setComposeLoading] = useState(false);
   const [mobileView, setMobileView] = useState<"list" | "chat">("list");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const targetUserId = params.get("user") || "";
   const targetItemId = params.get("item") || null;
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   useEffect(() => {
     void clearAppBadgeCount();
@@ -286,6 +291,10 @@ export default function Messages() {
       )
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   }, [messages, currentUserId, selectedPeerId]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [threadMessages]);
 
   async function sendMessage() {
     if (!messagesEnabled || !currentUserId || !selectedPeerId) return;
@@ -538,6 +547,7 @@ export default function Messages() {
                 </div>
               );
             })}
+            <div ref={messagesEndRef} />
           </div>
 
           {selectedPeerId && (
