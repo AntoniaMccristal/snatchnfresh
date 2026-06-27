@@ -35,8 +35,42 @@ function getDatesBetween(startValue: string, endValue: string) {
   return dates;
 }
 
+function getDatesBetweenInclusive(startValue: string, endValue: string) {
+  const start = parseDate(startValue);
+  const end = parseDate(endValue);
+  if (!start || !end) return [] as Date[];
+
+  const dates: Date[] = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    dates.push(new Date(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dates;
+}
+
 function rangesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string) {
   return aStart < bEnd && aEnd > bStart;
+}
+
+function addOneDay(value: string) {
+  const date = parseDate(value);
+  if (!date) return value;
+  date.setDate(date.getDate() + 1);
+  return formatDateForInput(date);
+}
+
+function normaliseBlockedDates(value: unknown): Array<{ start: string; end: string }> {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((range) => {
+      if (!range || typeof range !== "object") return null;
+      const start = String((range as any).start || "").slice(0, 10);
+      const end = String((range as any).end || "").slice(0, 10);
+      if (!start || !end) return null;
+      return { start, end };
+    })
+    .filter(Boolean) as Array<{ start: string; end: string }>;
 }
 
 function DatePickerFallback({ placeholder }: { placeholder: string }) {
@@ -168,7 +202,12 @@ const ItemDetail = () => {
 
   const blockedDates = bookedRanges.flatMap((range) =>
     getDatesBetween(range.start_date, range.end_date),
+  ).concat(
+    normaliseBlockedDates(item?.blocked_dates).flatMap((range) =>
+      getDatesBetweenInclusive(range.start, range.end),
+    ),
   );
+  const lenderBlockedRanges = normaliseBlockedDates(item?.blocked_dates);
   const images: string[] = Array.isArray(item?.image_urls) && item.image_urls.length > 0
     ? item.image_urls
     : item?.image_url
@@ -267,6 +306,15 @@ const ItemDetail = () => {
       return;
     }
 
+    const hasBlockedOverlap = lenderBlockedRanges.some((range) =>
+      rangesOverlap(startDate, endDate, range.start, addOneDay(range.end)),
+    );
+    if (hasBlockedOverlap) {
+      alert("This item is unavailable for those dates. Please choose another range.");
+      setIsContinuing(false);
+      return;
+    }
+
     navigate(`/booking/${item.id}?start=${startDate}&end=${endDate}`, {
       state: {
         itemSnapshot: {
@@ -280,6 +328,7 @@ const ItemDetail = () => {
           allows_dropoff: item.allows_dropoff,
           standard_shipping_price: item.standard_shipping_price,
           express_shipping_price: item.express_shipping_price,
+          blocked_dates: item.blocked_dates,
         },
       },
     });
@@ -602,9 +651,9 @@ const ItemDetail = () => {
                   />
                 </Suspense>
 
-                {bookedRanges.length > 0 && (
+                {(bookedRanges.length > 0 || lenderBlockedRanges.length > 0) && (
                   <p className="text-xs text-muted-foreground">
-                    Booked dates are disabled.
+                    Booked and unavailable dates are disabled.
                   </p>
                 )}
 

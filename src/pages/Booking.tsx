@@ -20,6 +20,40 @@ import { usePageRefresh } from "@/hooks/usePageRefresh";
 const stripePublishableKey = String(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "").trim();
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
+function parseDate(value: string) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+function formatDateForInput(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function addOneDay(value: string) {
+  const date = parseDate(value);
+  if (!date) return value;
+  date.setDate(date.getDate() + 1);
+  return formatDateForInput(date);
+}
+
+function rangesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string) {
+  return aStart < bEnd && aEnd > bStart;
+}
+
+function normaliseBlockedDates(value: unknown): Array<{ start: string; end: string }> {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((range) => {
+      if (!range || typeof range !== "object") return null;
+      const start = String((range as any).start || "").slice(0, 10);
+      const end = String((range as any).end || "").slice(0, 10);
+      if (!start || !end) return null;
+      return { start, end };
+    })
+    .filter(Boolean) as Array<{ start: string; end: string }>;
+}
+
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: string }> {
   constructor(props: { children: React.ReactNode }) {
     super(props);
@@ -322,6 +356,7 @@ const Booking = () => {
     : item?.image_url
       ? [item.image_url]
       : [];
+  const lenderBlockedRanges = useMemo(() => normaliseBlockedDates(item?.blocked_dates), [item?.blocked_dates]);
 
   async function handlePreparePayment() {
     if (!item || !itemId || !startDate || !endDate || rentalDays <= 0) return;
@@ -329,6 +364,14 @@ const Booking = () => {
     setErrorType(null);
 
     try {
+      const hasBlockedOverlap = lenderBlockedRanges.some((range) =>
+        rangesOverlap(startDate, endDate, range.start, addOneDay(range.end)),
+      );
+      if (hasBlockedOverlap) {
+        setErrorType("This item is unavailable for those dates. Please go back and choose another range.");
+        return;
+      }
+
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
       if (!token) { navigate("/auth"); return; }

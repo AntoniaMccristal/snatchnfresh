@@ -31,7 +31,13 @@ type DraftPayload = {
   allowsDropoff: boolean;
   imageUrl: string;
   imageUrls: string[];
+  blockedDates: BlockedDateRange[];
   updatedAt: number;
+};
+
+type BlockedDateRange = {
+  start: string;
+  end: string;
 };
 
 type ListingImage = {
@@ -140,6 +146,19 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   ]);
 }
 
+function normaliseBlockedDates(value: unknown): BlockedDateRange[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((range) => {
+      if (!range || typeof range !== "object") return null;
+      const start = String((range as any).start || "").slice(0, 10);
+      const end = String((range as any).end || "").slice(0, 10);
+      if (!start || !end) return null;
+      return { start, end };
+    })
+    .filter(Boolean) as BlockedDateRange[];
+}
+
 async function updateItemWithFallback(
   id: string,
   currentUserId: string,
@@ -234,6 +253,9 @@ const ListItem = () => {
   const [allowsPickup, setAllowsPickup] = useState(true);
   const [allowsDropoff, setAllowsDropoff] = useState(true);
   const [images, setImages] = useState<ListingImage[]>([]);
+  const [blockedDates, setBlockedDates] = useState<BlockedDateRange[]>([]);
+  const [blockedStart, setBlockedStart] = useState("");
+  const [blockedEnd, setBlockedEnd] = useState("");
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [stripeConnected, setStripeConnected] = useState(false);
@@ -360,6 +382,7 @@ const ListItem = () => {
         setExpressShippingPrice(String(data.express_shipping_price ?? ""));
         setAllowsPickup(data.allows_pickup !== false);
         setAllowsDropoff(data.allows_dropoff !== false);
+        setBlockedDates(normaliseBlockedDates(data.blocked_dates));
         const existingImageUrls = Array.isArray(data.image_urls)
           ? data.image_urls.filter((value: unknown) => typeof value === "string" && value)
           : [];
@@ -403,6 +426,7 @@ const ListItem = () => {
         allowsDropoff,
         imageUrl: images[0]?.persistedUrl || "",
         imageUrls: images.map((image) => image.persistedUrl).filter(Boolean),
+        blockedDates,
         updatedAt: Date.now(),
       };
 
@@ -412,7 +436,7 @@ const ListItem = () => {
     }, 650);
 
     return () => window.clearTimeout(timeout);
-  }, [title, brand, area, category, condition, description, pricePerDay, standardShippingPrice, expressShippingPrice, allowsPickup, allowsDropoff, images, draftKey, serverItemLoaded]);
+  }, [title, brand, area, category, condition, description, pricePerDay, standardShippingPrice, expressShippingPrice, allowsPickup, allowsDropoff, images, blockedDates, draftKey, serverItemLoaded]);
 
   useEffect(() => {
     return () => {
@@ -426,6 +450,26 @@ const ListItem = () => {
     setHasDraft(false);
     setLastDraftSavedAt(null);
     toast({ title: "Draft cleared" });
+  };
+
+  const addBlockedDateRange = () => {
+    if (!blockedStart || !blockedEnd) {
+      toast({ title: "Choose dates", description: "Select a start and end date to block.", variant: "destructive" });
+      return;
+    }
+
+    if (blockedEnd < blockedStart) {
+      toast({ title: "Check date range", description: "End date must be after the start date.", variant: "destructive" });
+      return;
+    }
+
+    setBlockedDates((current) => [...current, { start: blockedStart, end: blockedEnd }].sort((a, b) => a.start.localeCompare(b.start)));
+    setBlockedStart("");
+    setBlockedEnd("");
+  };
+
+  const removeBlockedDateRange = (index: number) => {
+    setBlockedDates((current) => current.filter((_, currentIndex) => currentIndex !== index));
   };
 
   async function handleImageSelect(fileList: FileList | null) {
@@ -652,6 +696,7 @@ const ListItem = () => {
         allows_pickup: allowsPickup,
         allows_dropoff: allowsDropoff,
         image_urls: finalImageUrls,
+        blocked_dates: blockedDates,
       };
 
       if (isEditing) {
@@ -826,6 +871,7 @@ const ListItem = () => {
                 allowsDropoff,
                 imageUrl: images[0]?.persistedUrl || "",
                 imageUrls: images.map((image) => image.persistedUrl).filter(Boolean),
+                blockedDates,
                 updatedAt: Date.now(),
               };
               localStorage.setItem(draftKey, JSON.stringify(draft));
@@ -1108,6 +1154,64 @@ const ListItem = () => {
         <p className="text-xs text-muted-foreground">
           Renter and seller confirm exact handoff time via in-app messages during booking.
         </p>
+      </div>
+
+      <div className="rounded-2xl border border-border/60 bg-card p-4 space-y-3">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Block dates</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Mark periods when this item is unavailable, like holidays or personal use.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-2">
+          <input
+            type="date"
+            value={blockedStart}
+            onChange={(e) => {
+              setBlockedStart(e.target.value);
+              if (!blockedEnd || blockedEnd < e.target.value) setBlockedEnd(e.target.value);
+            }}
+            className="h-11 rounded-xl border border-border bg-background px-3 text-sm"
+            aria-label="Blocked start date"
+          />
+          <input
+            type="date"
+            value={blockedEnd}
+            min={blockedStart || undefined}
+            onChange={(e) => setBlockedEnd(e.target.value)}
+            className="h-11 rounded-xl border border-border bg-background px-3 text-sm"
+            aria-label="Blocked end date"
+          />
+          <button
+            type="button"
+            onClick={addBlockedDateRange}
+            className="h-11 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground"
+          >
+            Add
+          </button>
+        </div>
+        {blockedDates.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {blockedDates.map((range, index) => (
+              <span
+                key={`${range.start}-${range.end}-${index}`}
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground"
+              >
+                {range.start} to {range.end}
+                <button
+                  type="button"
+                  onClick={() => removeBlockedDateRange(index)}
+                  className="text-muted-foreground hover:text-foreground"
+                  aria-label={`Remove blocked range ${range.start} to ${range.end}`}
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">No blocked dates added.</p>
+        )}
       </div>
 
       <button

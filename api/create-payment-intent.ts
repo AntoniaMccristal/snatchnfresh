@@ -99,8 +99,28 @@ function toIsoDate(value: string) {
   return new Date(value).toISOString().slice(0, 10);
 }
 
+function addOneDay(value: string) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return value;
+  date.setDate(date.getDate() + 1);
+  return date.toISOString().slice(0, 10);
+}
+
 function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string) {
   return aStart < bEnd && aEnd > bStart;
+}
+
+function normaliseBlockedDates(value: unknown): Array<{ start: string; end: string }> {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((range) => {
+      if (!range || typeof range !== "object") return null;
+      const start = String((range as any).start || "").slice(0, 10);
+      const end = String((range as any).end || "").slice(0, 10);
+      if (!start || !end) return null;
+      return { start, end };
+    })
+    .filter(Boolean) as Array<{ start: string; end: string }>;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -218,6 +238,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (hasOverlap) {
       return res.status(409).json({ error: "Those dates are already booked." });
+    }
+
+    const hasBlockedOverlap = normaliseBlockedDates(item.blocked_dates).some((range) =>
+      overlaps(normalizedStart, normalizedEnd, range.start, addOneDay(range.end)),
+    );
+
+    if (hasBlockedOverlap) {
+      return res.status(409).json({ error: "This item is unavailable for those dates." });
     }
 
     const pricePerDay = Number(item.price_per_day || item_snapshot?.price_per_day || 0);
