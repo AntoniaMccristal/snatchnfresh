@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Loader2, Plus, X } from "lucide-react";
+import { GripVertical, Loader2, Plus, X } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -271,6 +271,8 @@ const ListItem = () => {
   const [generatingListing, setGeneratingListing] = useState(false);
   const [lastGeneratedAt, setLastGeneratedAt] = useState<number | null>(null);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const previewObjectUrlsRef = useRef<string[]>([]);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
@@ -284,6 +286,17 @@ const ListItem = () => {
         previewObjectUrlsRef.current = previewObjectUrlsRef.current.filter((url) => url !== image.previewUrl);
       }
       return current.filter((entry) => entry.id !== imageId);
+    });
+  };
+
+  const reorderImages = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+    setImages((current) => {
+      if (!current[fromIndex] || toIndex >= current.length) return current;
+      const newImages = [...current];
+      const dragged = newImages.splice(fromIndex, 1)[0];
+      newImages.splice(toIndex, 0, dragged);
+      return newImages;
     });
   };
 
@@ -982,22 +995,52 @@ const ListItem = () => {
               const imageSrc = image
                 ? image.previewUrl || getItemImageUrl(image.persistedUrl, id, undefined)
                 : "";
+              const isDragging = dragIndex === index;
+              const isDragOver = dragOverIndex === index && dragIndex !== null && dragIndex !== index;
+              const dragFeedbackClass = `${isDragging ? "opacity-40 scale-95" : ""} ${isDragOver ? "border-2 border-primary ring-2 ring-primary/30" : ""}`;
 
               if (image) {
                 return (
                   <div
                     key={image.id}
-                    className="relative h-40 w-[120px] shrink-0 overflow-hidden rounded-2xl border border-border bg-card"
+                    data-slot-index={index}
+                    draggable
+                    onDragStart={() => setDragIndex(index)}
+                    onDragOver={(e) => { e.preventDefault(); setDragOverIndex(index); }}
+                    onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (dragIndex !== null) reorderImages(dragIndex, index);
+                      setDragIndex(null);
+                      setDragOverIndex(null);
+                    }}
+                    onTouchStart={() => setDragIndex(index)}
+                    onTouchEnd={(e) => {
+                      const touch = e.changedTouches[0];
+                      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                      const slot = el?.closest("[data-slot-index]");
+                      const targetIndexValue = slot?.getAttribute("data-slot-index") || "";
+                      const targetIndex = targetIndexValue === "" ? null : Number.parseInt(targetIndexValue, 10);
+                      if (targetIndex !== null && Number.isFinite(targetIndex) && dragIndex !== null) {
+                        reorderImages(dragIndex, targetIndex);
+                      }
+                      setDragIndex(null);
+                      setDragOverIndex(null);
+                    }}
+                    className={`relative h-40 w-[120px] shrink-0 overflow-hidden rounded-2xl border border-border bg-card transition-all duration-150 ${dragFeedbackClass}`}
                   >
                     <img src={imageSrc} alt={`Listing photo ${index + 1}`} className="h-full w-full object-cover" />
-                    {index === 0 && (
-                      <span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white">
+                    {index === 0 && images[0] && (
+                      <span className="absolute top-2 left-2 bg-foreground text-background text-[9px] font-bold px-2 py-0.5 rounded-full">
                         Cover
                       </span>
                     )}
+                    <div className="absolute right-2 top-9 text-white/70">
+                      <GripVertical size={14} />
+                    </div>
                     <button
                       type="button"
-                      onClick={() => removeImage(image.id)}
+                      onClick={(e) => { e.stopPropagation(); removeImage(image.id); }}
                       className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white"
                     >
                       <X size={12} />
@@ -1015,8 +1058,17 @@ const ListItem = () => {
                 <button
                   key={`empty-${index}`}
                   type="button"
+                  data-slot-index={index}
+                  onDragOver={(e) => { e.preventDefault(); setDragOverIndex(index); }}
+                  onDragLeave={() => setDragOverIndex(null)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (dragIndex !== null && index < images.length) reorderImages(dragIndex, index);
+                    setDragIndex(null);
+                    setDragOverIndex(null);
+                  }}
                   onClick={() => imageInputRef.current?.click()}
-                  className="relative flex h-40 w-[120px] shrink-0 items-center justify-center rounded-2xl border-2 border-dashed border-border bg-card text-muted-foreground"
+                  className={`relative flex h-40 w-[120px] shrink-0 items-center justify-center rounded-2xl border-2 border-dashed border-border bg-card text-muted-foreground transition-all duration-150 ${dragFeedbackClass}`}
                 >
                   {index === 0 && (
                     <span className="absolute left-2 top-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-foreground">
