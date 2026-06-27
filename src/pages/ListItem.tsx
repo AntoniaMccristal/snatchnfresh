@@ -22,6 +22,7 @@ type DraftPayload = {
   brand: string;
   area: string;
   category: string;
+  size: string;
   condition: string;
   description: string;
   pricePerDay: string;
@@ -247,6 +248,7 @@ const ListItem = () => {
   const [brand, setBrand] = useState("");
   const [area, setArea] = useState("");
   const [category, setCategory] = useState(CATEGORY_OPTIONS[0]);
+  const [size, setSize] = useState("");
   const [condition, setCondition] = useState(CONDITION_OPTIONS[0]);
   const [description, setDescription] = useState("");
   const [pricePerDay, setPricePerDay] = useState("");
@@ -389,11 +391,12 @@ const ListItem = () => {
       if (!error && data) {
         setTitle(data.title || "");
         setBrand(data.brand || "");
-        setArea(data.location || data.suburb || data.area || "");
-        setCategory(data.category || CATEGORY_OPTIONS[0]);
-        setCondition(data.condition || CONDITION_OPTIONS[0]);
+        setArea(data.location || data.area || data.suburb || "");
+        setCategory(data.category || "");
+        setSize(data.size || "");
+        setCondition(data.condition || "");
         setDescription(data.description || "");
-        setPricePerDay(String(data.price_per_day || ""));
+        setPricePerDay(data.price_per_day === null || data.price_per_day === undefined ? "" : String(data.price_per_day));
         setWeeklyPrice(data.weekly_price === null || data.weekly_price === undefined ? "" : String(data.weekly_price));
         setStandardShippingPrice(String(data.standard_shipping_price ?? ""));
         setExpressShippingPrice(String(data.express_shipping_price ?? ""));
@@ -434,6 +437,7 @@ const ListItem = () => {
         brand,
         area,
         category,
+        size,
         condition,
         description,
         pricePerDay,
@@ -454,7 +458,7 @@ const ListItem = () => {
     }, 650);
 
     return () => window.clearTimeout(timeout);
-  }, [title, brand, area, category, condition, description, pricePerDay, weeklyPrice, standardShippingPrice, expressShippingPrice, allowsPickup, allowsDropoff, images, blockedDates, draftKey, serverItemLoaded]);
+  }, [title, brand, area, category, size, condition, description, pricePerDay, weeklyPrice, standardShippingPrice, expressShippingPrice, allowsPickup, allowsDropoff, images, blockedDates, draftKey, serverItemLoaded]);
 
   useEffect(() => {
     return () => {
@@ -708,6 +712,7 @@ const ListItem = () => {
         location: area.trim(),
         suburb: area.trim(),
         category,
+        size: size.trim() || null,
         condition,
         description: description.trim(),
         price_per_day: parsedPricePerDay,
@@ -886,6 +891,7 @@ const ListItem = () => {
                 brand,
                 area,
                 category,
+                size,
                 condition,
                 description,
                 pricePerDay,
@@ -1148,6 +1154,13 @@ const ListItem = () => {
           ))}
         </select>
       </div>
+
+      <input
+        placeholder="Size (optional, e.g. XS, S, M, L, 8, 10)"
+        className="w-full border p-3 rounded-xl"
+        value={size}
+        onChange={(e) => setSize(e.target.value)}
+      />
 
       <textarea
         placeholder="Description"
