@@ -341,7 +341,17 @@ const Booking = () => {
     return Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24));
   }, [startDate, endDate]);
 
-  const rentalFee = useMemo(() => rentalDays * Number(item?.price_per_day || 0), [item, rentalDays]);
+  const dailyPrice = Number(item?.price_per_day || 0);
+  const weeklyPrice = Number(item?.weekly_price || 0);
+  const dailyRentalFee = rentalDays * dailyPrice;
+  const weeklyRateApplied = rentalDays >= 7 && weeklyPrice > 0;
+  const rentalFee = useMemo(() => {
+    if (!weeklyRateApplied) return dailyRentalFee;
+    const fullWeeks = Math.floor(rentalDays / 7);
+    const remainingDays = rentalDays % 7;
+    return (fullWeeks * weeklyPrice) + (remainingDays * dailyPrice);
+  }, [dailyPrice, dailyRentalFee, rentalDays, weeklyPrice, weeklyRateApplied]);
+  const weeklySaving = Math.max(0, dailyRentalFee - rentalFee);
   const COMMISSION_RATE = 0.05;
   const platformCommission = Math.round(rentalFee * COMMISSION_RATE);
   const standardShipping = Number(item?.standard_shipping_price || 0);
@@ -418,6 +428,7 @@ const Booking = () => {
             id: item.id,
             title: item.title,
             price_per_day: item.price_per_day,
+            weekly_price: item.weekly_price,
             standard_shipping_price: item.standard_shipping_price,
             express_shipping_price: item.express_shipping_price,
             owner_id: item.owner_id,
@@ -536,7 +547,9 @@ const Booking = () => {
           )}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">${item.price_per_day}/day</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              ${item.price_per_day}/day{Number(item.weekly_price) > 0 ? ` · $${item.weekly_price}/week` : ""}
+            </p>
             <div className="flex gap-2 mt-2 flex-wrap">
               <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full text-muted-foreground">{startDate}</span>
               <span className="text-[10px] text-muted-foreground">→</span>
@@ -643,6 +656,11 @@ const Booking = () => {
                 <span className="text-muted-foreground">Rental ({rentalDays} days)</span>
                 <span className="text-foreground font-medium">${rentalFee}</span>
               </div>
+              {weeklyRateApplied && weeklySaving > 0 && (
+                <div className="rounded-xl bg-primary/5 px-3 py-2 text-xs font-semibold text-primary">
+                  Weekly rate applied — saving ${weeklySaving}
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Platform fee (5%)</span>
                 <span className="text-foreground font-medium">${platformCommission}</span>

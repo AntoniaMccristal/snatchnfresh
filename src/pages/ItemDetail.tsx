@@ -322,6 +322,7 @@ const ItemDetail = () => {
           title: item.title,
           image_url: item.image_url,
           price_per_day: item.price_per_day,
+          weekly_price: item.weekly_price,
           owner_id: item.owner_id,
           user_id: item.user_id,
           allows_pickup: item.allows_pickup,
@@ -563,7 +564,7 @@ const ItemDetail = () => {
             <div>
               <h1 className="text-xl font-bold">{item.title}</h1>
               <p className="text-sm text-muted-foreground">
-                ${item.price_per_day}/day
+                ${item.price_per_day}/day{Number(item.weekly_price) > 0 ? ` · $${item.weekly_price}/week` : ""}
               </p>
               {item.brand && <p className="text-xs text-muted-foreground mt-1">{item.brand}</p>}
               {item.size && <p className="text-xs text-muted-foreground mt-1">Size {item.size}</p>}

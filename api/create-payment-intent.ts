@@ -249,6 +249,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const pricePerDay = Number(item.price_per_day || item_snapshot?.price_per_day || 0);
+    const weeklyPrice = Number(item.weekly_price || item_snapshot?.weekly_price || 0);
     if (!Number.isFinite(pricePerDay) || pricePerDay <= 0) {
       return res.status(400).json({ error: "Item pricing is invalid." });
     }
@@ -264,7 +265,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ? expressShippingPrice
           : 0;
 
-    const rentalSubtotal = rentalDays * pricePerDay;
+    const weeklyRateApplied = rentalDays >= 7 && Number.isFinite(weeklyPrice) && weeklyPrice > 0;
+    const rentalSubtotal = weeklyRateApplied
+      ? (Math.floor(rentalDays / 7) * weeklyPrice) + ((rentalDays % 7) * pricePerDay)
+      : rentalDays * pricePerDay;
     const platformCommissionAmount = Math.round(rentalSubtotal * COMMISSION_RATE);
     const insuranceAmount = insuranceSelected ? 5 : 0;
     const lenderPayoutAmount = rentalSubtotal - platformCommissionAmount + shippingAmount;

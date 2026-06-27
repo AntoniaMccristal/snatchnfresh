@@ -25,6 +25,7 @@ type DraftPayload = {
   condition: string;
   description: string;
   pricePerDay: string;
+  weeklyPrice: string;
   standardShippingPrice: string;
   expressShippingPrice: string;
   allowsPickup: boolean;
@@ -60,6 +61,7 @@ type ValidationState = {
   condition: boolean;
   description: boolean;
   price: boolean;
+  weeklyPrice: boolean;
   standardShipping: boolean;
   expressShipping: boolean;
 };
@@ -248,6 +250,7 @@ const ListItem = () => {
   const [condition, setCondition] = useState(CONDITION_OPTIONS[0]);
   const [description, setDescription] = useState("");
   const [pricePerDay, setPricePerDay] = useState("");
+  const [weeklyPrice, setWeeklyPrice] = useState("");
   const [standardShippingPrice, setStandardShippingPrice] = useState("");
   const [expressShippingPrice, setExpressShippingPrice] = useState("");
   const [allowsPickup, setAllowsPickup] = useState(true);
@@ -378,6 +381,7 @@ const ListItem = () => {
         setCondition(data.condition || CONDITION_OPTIONS[0]);
         setDescription(data.description || "");
         setPricePerDay(String(data.price_per_day || ""));
+        setWeeklyPrice(data.weekly_price === null || data.weekly_price === undefined ? "" : String(data.weekly_price));
         setStandardShippingPrice(String(data.standard_shipping_price ?? ""));
         setExpressShippingPrice(String(data.express_shipping_price ?? ""));
         setAllowsPickup(data.allows_pickup !== false);
@@ -420,6 +424,7 @@ const ListItem = () => {
         condition,
         description,
         pricePerDay,
+        weeklyPrice,
         standardShippingPrice,
         expressShippingPrice,
         allowsPickup,
@@ -436,7 +441,7 @@ const ListItem = () => {
     }, 650);
 
     return () => window.clearTimeout(timeout);
-  }, [title, brand, area, category, condition, description, pricePerDay, standardShippingPrice, expressShippingPrice, allowsPickup, allowsDropoff, images, blockedDates, draftKey, serverItemLoaded]);
+  }, [title, brand, area, category, condition, description, pricePerDay, weeklyPrice, standardShippingPrice, expressShippingPrice, allowsPickup, allowsDropoff, images, blockedDates, draftKey, serverItemLoaded]);
 
   useEffect(() => {
     return () => {
@@ -598,6 +603,7 @@ const ListItem = () => {
       }
 
       const parsedPricePerDay = Number(pricePerDay);
+      const parsedWeeklyPrice = weeklyPrice.trim() === "" ? null : Number(weeklyPrice);
       const parsedStandardShippingPrice = Number(standardShippingPrice);
       const parsedExpressShippingPrice = Number(expressShippingPrice);
       const hasPersistableImageUrl = images.some((image) => isPersistableItemImageUrl(image.persistedUrl));
@@ -614,6 +620,7 @@ const ListItem = () => {
         expressShippingPrice.trim() === "" ||
         !Number.isFinite(parsedPricePerDay) ||
         parsedPricePerDay <= 0 ||
+        (parsedWeeklyPrice !== null && (!Number.isFinite(parsedWeeklyPrice) || parsedWeeklyPrice <= 0)) ||
         !Number.isFinite(parsedStandardShippingPrice) ||
         parsedStandardShippingPrice < 0 ||
         !Number.isFinite(parsedExpressShippingPrice) ||
@@ -691,6 +698,7 @@ const ListItem = () => {
         condition,
         description: description.trim(),
         price_per_day: parsedPricePerDay,
+        weekly_price: parsedWeeklyPrice,
         standard_shipping_price: parsedStandardShippingPrice,
         express_shipping_price: parsedExpressShippingPrice,
         allows_pickup: allowsPickup,
@@ -817,6 +825,7 @@ const ListItem = () => {
 
   const validation: ValidationState = useMemo(() => {
     const parsedPricePerDay = Number(pricePerDay);
+    const parsedWeeklyPrice = weeklyPrice.trim() === "" ? null : Number(weeklyPrice);
     const parsedStandardShippingPrice = Number(standardShippingPrice);
     const parsedExpressShippingPrice = Number(expressShippingPrice);
     const hasPersistableImageUrl = images.some((image) => isPersistableItemImageUrl(image.persistedUrl));
@@ -829,10 +838,11 @@ const ListItem = () => {
       condition: Boolean(condition.trim()),
       description: Boolean(description.trim()),
       price: Number.isFinite(parsedPricePerDay) && parsedPricePerDay > 0,
+      weeklyPrice: parsedWeeklyPrice === null || (Number.isFinite(parsedWeeklyPrice) && parsedWeeklyPrice > 0),
       standardShipping: Number.isFinite(parsedStandardShippingPrice) && parsedStandardShippingPrice >= 0,
       expressShipping: Number.isFinite(parsedExpressShippingPrice) && parsedExpressShippingPrice >= 0,
     };
-  }, [area, category, condition, description, expressShippingPrice, images, pricePerDay, standardShippingPrice, title]);
+  }, [area, category, condition, description, expressShippingPrice, images, pricePerDay, standardShippingPrice, title, weeklyPrice]);
 
   const missingFieldMessages = useMemo(() => {
     const messages: string[] = [];
@@ -841,6 +851,7 @@ const ListItem = () => {
     if (!validation.area) messages.push("Add an area");
     if (!validation.description) messages.push("Add a description");
     if (!validation.price) messages.push("Add a valid daily price");
+    if (!validation.weeklyPrice) messages.push("Add a valid weekly price or leave it blank");
     if (!validation.standardShipping) messages.push("Add a valid standard shipping fee");
     if (!validation.expressShipping) messages.push("Add a valid express shipping fee");
     return messages;
@@ -865,6 +876,7 @@ const ListItem = () => {
                 condition,
                 description,
                 pricePerDay,
+                weeklyPrice,
                 standardShippingPrice,
                 expressShippingPrice,
                 allowsPickup,
@@ -1098,6 +1110,17 @@ const ListItem = () => {
         className={`w-full border p-3 rounded-xl ${attemptedSubmit && !validation.price ? "border-destructive" : ""}`}
         value={pricePerDay}
         onChange={(e) => setPricePerDay(e.target.value)}
+      />
+
+      <input
+        type="number"
+        min="0"
+        step="1"
+        placeholder="e.g. 90 (save vs daily rate)"
+        aria-label="Weekly price"
+        className={`w-full border p-3 rounded-xl ${attemptedSubmit && !validation.weeklyPrice ? "border-destructive" : ""}`}
+        value={weeklyPrice}
+        onChange={(e) => setWeeklyPrice(e.target.value)}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
