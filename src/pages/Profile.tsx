@@ -1,4 +1,4 @@
-import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BanknoteIcon,
@@ -9,7 +9,6 @@ import {
   Heart,
   LogOut,
   MapPin,
-  MessageCircle,
   Settings,
   Shirt,
   Sparkles,
@@ -21,8 +20,13 @@ import { getItemImageUrl } from "@/lib/images";
 import { uploadAvatar } from "@/lib/avatarUpload";
 import { usePageRefresh } from "@/hooks/usePageRefresh";
 import AvatarCropper from "@/components/AvatarCropper";
-import SnatchnWallet from "@/components/SnatchnWallet";
 import { sendPushNotification } from "@/lib/pushNotifications";
+
+const WardrobeTab = lazy(() => import("@/components/profile/WardrobeTab"));
+const SnatchesTab = lazy(() => import("@/components/profile/SnatchesTab"));
+const WalletTab = lazy(() => import("@/components/profile/WalletTab"));
+const ReturnModal = lazy(() => import("@/components/profile/ReturnModal"));
+const DisputeModal = lazy(() => import("@/components/profile/DisputeModal"));
 
 type ProfileSection = "wardrobe" | "snatches" | "likes" | "wallet";
 
@@ -55,8 +59,6 @@ function getStatusColor(value?: string) {
   }
   return "bg-amber-100 text-amber-800";
 }
-
-const RATEABLE_STATUSES = new Set(["approved", "paid", "completed", "returned"]);
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -796,348 +798,54 @@ export default function Profile() {
       {/* ── Tab content ── */}
       <div className="px-5 pt-6 mt-1 space-y-5">
 
-        {/* WARDROBE TAB */}
-        {activeSection === "wardrobe" && (
-          <>
-            {/* Incoming booking requests */}
-            {incomingRequests.length > 0 && (
-              <section>
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
-                    Booking requests
-                    <span className="min-w-5 h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] leading-5 font-bold text-center">
-                      {incomingRequests.length}
-                    </span>
-                  </h2>
-                </div>
-                <div className="space-y-3">
-                  {incomingRequests.map((booking) => (
-                    <div key={booking.id} className="bg-card rounded-2xl border border-border/50 shadow-soft p-3">
-                      <div className="flex gap-3">
-                        {booking.item_image_url ? (
-                          <img
-                            src={withImageBust(booking.item_image_url, booking.item_id)}
-                            alt={booking.item_title || "Item"}
-                            className="w-14 rounded-xl object-cover border border-border/30"
-                            style={{ height: 72 }}
-                          />
-                        ) : (
-                          <div className="w-14 rounded-xl bg-muted border border-border/30 flex items-center justify-center text-sm font-bold text-muted-foreground" style={{ height: 72 }}>
-                            {String(booking.item_title || "I").slice(0, 1).toUpperCase()}
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-foreground truncate">{booking.item_title || "Your listing"}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{booking.renter_name || "Renter"}</p>
-                          <p className="text-xs text-muted-foreground">{formatDate(booking.start_date)} – {formatDate(booking.end_date)}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            {Number.isFinite(Number(booking.total_price)) && (
-                              <span className="text-xs font-semibold text-foreground">${Number(booking.total_price)}</span>
-                            )}
-                            {(booking.paid_at || booking.stripe_payment_intent_id) && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-800">Paid</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-2 mt-3">
-                        <button
-                          onClick={() => navigate(`/messages?user=${booking.renter_id}&item=${booking.item_id}`)}
-                          className="flex-1 h-9 rounded-xl border border-border/60 text-xs font-semibold flex items-center justify-center gap-1.5"
-                        >
-                          <MessageCircle size={13} /> Message renter
-                        </button>
-                        <button
-                          onClick={() => updateIncomingRequest(booking.id, "approved")}
-                          disabled={updatingOwnerBookingId === booking.id}
-                          className="flex-1 h-9 rounded-xl bg-primary text-primary-foreground text-xs font-bold disabled:opacity-60"
-                        >
-                          {updatingOwnerBookingId === booking.id ? "Working..." : "Approve"}
-                        </button>
-                        <button
-                          onClick={() => updateIncomingRequest(booking.id, "rejected")}
-                          disabled={updatingOwnerBookingId === booking.id}
-                          className="h-9 px-4 rounded-xl border border-border/60 text-xs font-semibold text-muted-foreground disabled:opacity-60"
-                        >
-                          Decline
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
+        <Suspense fallback={<div className="rounded-2xl border border-border/50 bg-card p-4 text-sm text-muted-foreground">Loading...</div>}>
+          {activeSection === "wardrobe" && (
+            <WardrobeTab
+              incomingRequests={incomingRequests}
+              myWardrobe={myWardrobe}
+              ownerBookings={ownerBookings}
+              trackingDrafts={trackingDrafts}
+              deletingItemId={deletingItemId}
+              updatingOwnerBookingId={updatingOwnerBookingId}
+              navigate={navigate}
+              withImageBust={withImageBust}
+              formatDate={formatDate}
+              getBookingStatusLabel={getBookingStatusLabel}
+              getStatusColor={getStatusColor}
+              updateIncomingRequest={updateIncomingRequest}
+              deleteWardrobeItem={deleteWardrobeItem}
+              setTrackingDrafts={setTrackingDrafts}
+              saveTracking={saveTracking}
+              markDelivered={markDelivered}
+              openReturnModal={(bookingId) => { setReturningBookingId(bookingId); setShowReturnModal(true); }}
+              openDisputeModal={setDisputeBookingId}
+              handleLenderCancel={handleLenderCancel}
+              markItemAvailable={async (itemId) => {
+                await supabase.from("items").update({ availability_status: "available" }).eq("id", itemId);
+                loadProfile();
+              }}
+            />
+          )}
 
-            {/* Wardrobe grid */}
-            <section>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-bold text-foreground">My listings</h2>
-                <button onClick={() => navigate("/list")} className="text-xs font-bold text-primary">
-                  + Add new
-                </button>
-              </div>
-
-              {myWardrobe.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-border p-8 text-center bg-card">
-                  <Shirt size={24} className="text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm font-semibold text-foreground mb-1">No listings yet</p>
-                  <p className="text-xs text-muted-foreground mb-3">List your first item and start earning</p>
-                  <button onClick={() => navigate("/list")} className="h-9 px-5 rounded-xl bg-primary text-primary-foreground text-xs font-bold">
-                    List an item
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {myWardrobe.map((item) => (
-                    <div key={item.id} className="group">
-                      <button onClick={() => navigate(`/item/${item.id}`)} className="w-full text-left">
-                        <div className="relative overflow-hidden rounded-2xl bg-muted border border-border/30" style={{ aspectRatio: "3/4" }}>
-                          <img
-                            src={withImageBust(item.image_url, item.id)}
-                            alt={item.title}
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                          />
-                          {item.availability_status && item.availability_status !== "available" && (
-                            <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center">
-                              <span className="bg-white text-foreground text-[10px] font-bold px-3 py-1.5 rounded-full">
-                                {item.availability_status === "needs_cleaning" ? "Needs cleaning" : "Needs repair"}
-                              </span>
-                            </div>
-                          )}
-                          <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); navigate(`/list/${item.id}`); }}
-                              className="h-6 px-2 rounded-lg bg-white/90 text-[10px] font-bold text-foreground shadow-soft"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); deleteWardrobeItem(item.id); }}
-                              disabled={deletingItemId === item.id}
-                              className="h-6 px-2 rounded-lg bg-white/90 text-[10px] font-bold text-red-600 shadow-soft disabled:opacity-60"
-                            >
-                              {deletingItemId === item.id ? "..." : "Del"}
-                            </button>
-                          </div>
-                        </div>
-                        <p className="mt-1.5 text-xs font-bold text-foreground truncate">{item.title}</p>
-                        <p className="text-[11px] text-muted-foreground">${item.price_per_day}/day</p>
-                      </button>
-                      {item.availability_status && item.availability_status !== "available" && (
-                        <button
-                          onClick={async () => {
-                            await supabase.from("items").update({ availability_status: "available" }).eq("id", item.id);
-                            loadProfile();
-                          }}
-                          className="w-full mt-1 h-7 rounded-xl border border-primary text-primary text-[10px] font-bold"
-                        >
-                          Mark as available
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            {ownerBookings.filter((booking) =>
-              booking.end_date && new Date(booking.end_date) < new Date() && !booking.item_returned_at,
-            ).length > 0 && (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 mb-4">
-                <p className="text-sm font-bold text-amber-900">
-                  You have rentals past their return date
-                </p>
-                <p className="text-xs text-amber-800 mt-1">
-                  Please confirm items have been returned to release your payout.
-                </p>
-              </div>
-            )}
-
-            {/* Active rentals */}
-            {ownerBookings.length > 0 && (
-              <section>
-                <h2 className="text-sm font-bold text-foreground mb-3">Active rentals</h2>
-                <div className="space-y-3">
-                  {ownerBookings.map((booking) => {
-                    const bookingStatus = String(booking.status || "").toLowerCase();
-                    const rentalEndPassed = booking.end_date && new Date(booking.end_date) < new Date();
-                    const showReturnButton = !booking.item_returned_at
-                      && (rentalEndPassed || ["approved", "paid"].includes(bookingStatus));
-                    const showCancelButton = ["approved", "paid"].includes(bookingStatus);
-
-                    return (
-                    <div key={booking.id} className="bg-card rounded-2xl border border-border/50 shadow-soft p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-sm font-semibold text-foreground">{formatDate(booking.start_date)} – {formatDate(booking.end_date)}</p>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getStatusColor(booking.status)}`}>
-                          {getBookingStatusLabel(booking.status)}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-[10px] text-muted-foreground">Payout:</span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${booking.payout_status === "released" ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}`}>
-                          {booking.payout_status || "held"}
-                        </span>
-                      </div>
-                      <div className="flex gap-2 mb-3">
-                        <button
-                          onClick={() => navigate(`/messages?user=${booking.renter_id}&item=${booking.item_id}`)}
-                          className="flex-1 h-9 rounded-xl border border-border/60 text-xs font-semibold flex items-center justify-center gap-1.5"
-                        >
-                          <MessageCircle size={13} /> Message renter
-                        </button>
-                      </div>
-                      <div className="flex gap-2">
-                        <input
-                          value={trackingDrafts[booking.id] || ""}
-                          onChange={(e) => setTrackingDrafts((prev) => ({ ...prev, [booking.id]: e.target.value }))}
-                          placeholder="Tracking number"
-                          className="flex-1 h-8 rounded-xl border border-border px-3 text-xs bg-background"
-                        />
-                        <button onClick={() => saveTracking(booking.id)} disabled={updatingOwnerBookingId === booking.id} className="h-8 px-3 rounded-xl bg-primary text-primary-foreground text-xs font-bold disabled:opacity-60">Save</button>
-                      </div>
-                      <div className="flex gap-2 mt-2">
-                        <button onClick={() => markDelivered(booking.id)} disabled={updatingOwnerBookingId === booking.id} className="flex-1 h-8 rounded-xl border border-border text-xs font-semibold disabled:opacity-60">Mark delivered</button>
-                      </div>
-                      {showReturnButton && (
-                        <div className="space-y-2 mt-2">
-                          <button
-                            onClick={() => { setReturningBookingId(booking.id); setShowReturnModal(true); }}
-                            disabled={updatingOwnerBookingId === booking.id}
-                            className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-xs font-bold disabled:opacity-60"
-                          >
-                            {updatingOwnerBookingId === booking.id ? "Working..." : "Item returned in good condition - release payout"}
-                          </button>
-                          <button
-                            onClick={() => setDisputeBookingId(booking.id)}
-                            disabled={updatingOwnerBookingId === booking.id}
-                            className="w-full h-10 rounded-xl border border-red-300 text-red-600 text-xs font-semibold disabled:opacity-60"
-                          >
-                            Item returned damaged - raise a dispute
-                          </button>
-                        </div>
-                      )}
-                      {showCancelButton && (
-                        <button
-                          onClick={() => handleLenderCancel(booking.id)}
-                          disabled={updatingOwnerBookingId === booking.id}
-                          className="w-full h-9 rounded-xl border border-red-200 text-red-600 text-xs font-semibold mt-2 disabled:opacity-60"
-                        >
-                          Cancel rental (renter didn&apos;t show)
-                        </button>
-                      )}
-                    </div>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
-          </>
-        )}
-
-        {/* SNATCHES TAB */}
-        {activeSection === "snatches" && (
-          <section className="space-y-3">
-            <h2 className="text-sm font-bold text-foreground">My rentals</h2>
-            {mySnatches.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border p-8 text-center bg-card">
-                <Sparkles size={24} className="text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm font-semibold text-foreground mb-1">No rentals yet</p>
-                <p className="text-xs text-muted-foreground mb-3">Browse and snatch something amazing</p>
-                <button onClick={() => navigate("/")} className="h-9 px-5 rounded-xl bg-primary text-primary-foreground text-xs font-bold">Browse listings</button>
-              </div>
-            ) : (
-              mySnatches.map((booking) => {
-                const hasExistingRating = Boolean(myRatingsByBooking[booking.id]);
-                const selectedRating = ratingDrafts[booking.id] || 0;
-                const canRate = RATEABLE_STATUSES.has(String(booking.status || "").toLowerCase())
-                  && Boolean(booking.item_returned_at);
-                const bookingStatus = String(booking.status || "").toLowerCase();
-                const canConfirmReturn = ["approved", "paid", "completed"].includes(bookingStatus)
-                  && !booking.item_returned_at
-                  && booking.delivery_method !== "pickup"
-                  && booking.tracking_status === "delivered";
-                const lenderId = booking.owner_id || booking.item?.owner_id || booking.item?.user_id;
-                const isCancelled = bookingStatus === "cancelled";
-
-                return (
-                  <div key={booking.id} className="bg-card rounded-2xl border border-border/50 shadow-soft p-3">
-                    <button onClick={() => booking.item?.id && navigate(`/item/${booking.item.id}`)} className="w-full text-left">
-                      <div className="flex gap-3">
-                        <img
-                          src={withImageBust(booking.item?.image_url, booking.item?.id)}
-                          alt={booking.item?.title || "Booked item"}
-                          className="w-16 rounded-xl object-cover border border-border/30"
-                          style={{ height: 80 }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-foreground truncate">{booking.item?.title || "Booked item"}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{formatDate(booking.start_date)} – {formatDate(booking.end_date)}</p>
-                          <p className="text-xs text-muted-foreground">${booking.total_price}</p>
-                          <span className={`inline-block mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full ${getStatusColor(booking.status)}`}>
-                            {getBookingStatusLabel(booking.status)}
-                          </span>
-                        </div>
-                      </div>
-                    </button>
-
-                    {lenderId && (
-                      <button
-                        onClick={() => navigate(`/messages?user=${lenderId}&item=${booking.item_id}`)}
-                        className="w-full h-9 rounded-xl border border-border/60 text-xs font-semibold flex items-center justify-center gap-1.5 mt-2"
-                      >
-                        <MessageCircle size={13} /> Message lender
-                      </button>
-                    )}
-
-                    {isCancelled && (
-                      <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3">
-                        <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700">
-                          Cancelled by lender
-                        </span>
-                        <p className="text-xs text-red-700 mt-2">
-                          Your payment will be refunded within 5-10 business days.
-                        </p>
-                      </div>
-                    )}
-
-                    {canConfirmReturn && (
-                      <div className="mt-3 pt-3 border-t border-border/40">
-                        <button
-                          onClick={() => confirmReturnReceivedInGoodCondition(booking.id)}
-                          disabled={confirmingReturnBookingId === booking.id}
-                          className="w-full h-9 rounded-xl border border-border text-xs font-semibold disabled:opacity-60"
-                        >
-                          {confirmingReturnBookingId === booking.id ? "Confirming..." : "Confirm item returned in good condition"}
-                        </button>
-                      </div>
-                    )}
-
-                    {ratingsEnabled && canRate && (
-                      <div className="mt-3 pt-3 border-t border-border/40">
-                        <p className="text-xs font-semibold text-foreground mb-2">{hasExistingRating ? "Update rating" : "Rate this rental"}</p>
-                        <div className="flex items-center gap-1.5">
-                          {[1, 2, 3, 4, 5].map((value) => (
-                            <button key={value} onClick={() => setRatingDrafts((prev) => ({ ...prev, [booking.id]: value }))} className="p-0.5">
-                              <Star size={20} className={value <= selectedRating ? "text-amber-500 fill-amber-500" : "text-muted-foreground"} />
-                            </button>
-                          ))}
-                          <button
-                            onClick={() => submitRating(booking)}
-                            disabled={submittingBookingId === booking.id}
-                            className="ml-2 h-8 px-4 rounded-xl bg-primary text-primary-foreground text-xs font-bold disabled:opacity-50"
-                          >
-                            {submittingBookingId === booking.id ? "Saving..." : hasExistingRating ? "Update" : "Submit"}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </section>
-        )}
+          {activeSection === "snatches" && (
+            <SnatchesTab
+              mySnatches={mySnatches}
+              myRatingsByBooking={myRatingsByBooking}
+              ratingDrafts={ratingDrafts}
+              ratingsEnabled={ratingsEnabled}
+              submittingBookingId={submittingBookingId}
+              confirmingReturnBookingId={confirmingReturnBookingId}
+              navigate={navigate}
+              withImageBust={withImageBust}
+              formatDate={formatDate}
+              getBookingStatusLabel={getBookingStatusLabel}
+              getStatusColor={getStatusColor}
+              setRatingDrafts={setRatingDrafts}
+              submitRating={submitRating}
+              confirmReturnReceivedInGoodCondition={confirmReturnReceivedInGoodCondition}
+            />
+          )}
+        </Suspense>
 
         {/* LIKES TAB */}
         {activeSection === "likes" && (
@@ -1174,15 +882,15 @@ export default function Profile() {
           </section>
         )}
 
-        {activeSection === "wallet" && user?.id && (
-          <section className="space-y-3">
-            <SnatchnWallet
+        <Suspense fallback={null}>
+          {activeSection === "wallet" && user?.id && (
+            <WalletTab
               userId={user.id}
               stripeConnected={stripeConnected}
               onConnectStripe={connectStripePayouts}
             />
-          </section>
-        )}
+          )}
+        </Suspense>
 
         {/* ── Account settings (collapsed) ── */}
         <section className="mt-2">
@@ -1310,102 +1018,31 @@ export default function Profile() {
         </section>
 
       </div>
-      {showReturnModal && returningBookingId && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
-          <div className="bg-card rounded-t-3xl p-6 w-full max-w-lg space-y-4">
-            <h2 className="text-lg font-bold text-foreground">Item returned!</h2>
-            <p className="text-sm text-muted-foreground">
-              Is this item ready to be listed again straight away?
-            </p>
-            <div className="space-y-2">
-              <button
-                onClick={() => handleReturnWithStatus(returningBookingId, "available")}
-                className="w-full h-12 rounded-2xl bg-primary text-primary-foreground font-bold text-sm text-left px-4 flex items-center gap-3"
-              >
-                <span className="text-xl">OK</span>
-                <div>
-                  <p className="font-bold">Ready to list again</p>
-                  <p className="text-xs opacity-75">Item is clean and in great condition</p>
-                </div>
-              </button>
-              <button
-                onClick={() => handleReturnWithStatus(returningBookingId, "needs_cleaning")}
-                className="w-full h-12 rounded-2xl border border-border text-foreground font-semibold text-sm text-left px-4 flex items-center gap-3"
-              >
-                <span className="text-xl">Wash</span>
-                <div>
-                  <p className="font-bold">Needs a clean first</p>
-                  <p className="text-xs text-muted-foreground">Mark as unavailable until you relist it</p>
-                </div>
-              </button>
-              <button
-                onClick={() => handleReturnWithStatus(returningBookingId, "needs_repair")}
-                className="w-full h-12 rounded-2xl border border-border text-foreground font-semibold text-sm text-left px-4 flex items-center gap-3"
-              >
-                <span className="text-xl">Fix</span>
-                <div>
-                  <p className="font-bold">Needs repairs</p>
-                  <p className="text-xs text-muted-foreground">Mark as unavailable until fixed</p>
-                </div>
-              </button>
-            </div>
-            <button
-              onClick={() => { setShowReturnModal(false); setReturningBookingId(null); }}
-              className="w-full text-xs text-muted-foreground py-2"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-      {disputeBookingId && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
-          <div className="bg-card rounded-t-3xl p-6 w-full max-w-lg space-y-4">
-            <h2 className="text-lg font-bold text-foreground">Raise a dispute</h2>
-            <p className="text-sm text-muted-foreground">
-              Describe the damage to the item. We will review your case and be in touch within 24 hours.
-            </p>
-            <textarea
-              value={disputeDescription}
-              onChange={(e) => setDisputeDescription(e.target.value)}
-              placeholder="Describe what happened - e.g. stain on front, broken zip, torn hem..."
-              className="w-full h-32 rounded-2xl border border-border p-3 text-sm bg-background resize-none"
-            />
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
-              <p className="text-xs text-amber-800">
-                Before raising a formal dispute, have you messaged the renter about the damage?
-                We recommend attempting to resolve directly first.
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  const booking = ownerBookings.find((row) => row.id === disputeBookingId);
-                  setDisputeBookingId(null);
-                  setDisputeDescription("");
-                  if (booking) navigate(`/messages?user=${booking.renter_id}&item=${booking.item_id}`);
-                }}
-                className="flex-1 h-11 rounded-xl border border-border text-sm font-semibold"
-              >
-                Message renter first
-              </button>
-              <button
-                onClick={() => submitDispute(disputeBookingId, disputeDescription)}
-                disabled={submittingDispute || disputeDescription.trim().length < 10}
-                className="flex-1 h-11 rounded-xl bg-red-600 text-white text-sm font-bold disabled:opacity-50"
-              >
-                {submittingDispute ? "Submitting..." : "Raise dispute"}
-              </button>
-            </div>
-            <button
-              onClick={() => { setDisputeBookingId(null); setDisputeDescription(""); }}
-              className="w-full text-xs text-muted-foreground py-2"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+      <Suspense fallback={null}>
+        {showReturnModal && returningBookingId && (
+          <ReturnModal
+            bookingId={returningBookingId}
+            onSubmit={handleReturnWithStatus}
+            onClose={() => { setShowReturnModal(false); setReturningBookingId(null); }}
+          />
+        )}
+        {disputeBookingId && (
+          <DisputeModal
+            bookingId={disputeBookingId}
+            description={disputeDescription}
+            submitting={submittingDispute}
+            onDescriptionChange={setDisputeDescription}
+            onClose={() => { setDisputeBookingId(null); setDisputeDescription(""); }}
+            onMessageRenter={() => {
+              const booking = ownerBookings.find((row) => row.id === disputeBookingId);
+              setDisputeBookingId(null);
+              setDisputeDescription("");
+              if (booking) navigate(`/messages?user=${booking.renter_id}&item=${booking.item_id}`);
+            }}
+            onSubmit={submitDispute}
+          />
+        )}
+      </Suspense>
       {cropSrc && <AvatarCropper imageSrc={cropSrc} onSave={handleCropSave} onCancel={() => setCropSrc("")} />}
     </div>
   );
