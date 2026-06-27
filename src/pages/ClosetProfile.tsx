@@ -22,6 +22,8 @@ export default function ClosetProfile() {
   const [averageRating, setAverageRating] = useState(0);
   const [reviewCount, setReviewCount] = useState(0);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [responseRate, setResponseRate] = useState<number | null>(null);
+  const [averageResponseHours, setAverageResponseHours] = useState<number | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -95,6 +97,41 @@ export default function ClosetProfile() {
         } else if (ratingsMissing || !ratingsRows?.length) {
           setAverageRating(0);
           setReviewCount(0);
+        }
+
+        const { data: bookingRows, error: bookingsError } = await supabase
+          .from("bookings")
+          .select("id,status,created_at,updated_at")
+          .eq("owner_id", userId);
+
+        const bookingsMissing =
+          bookingsError?.code === "42P01" ||
+          String(bookingsError?.message || "").toLowerCase().includes("relation");
+
+        if (!bookingsError && bookingRows && bookingRows.length >= 3) {
+          const respondedBookings = bookingRows.filter((booking: any) =>
+            String(booking.status || "").toLowerCase() !== "pending",
+          );
+          setResponseRate(Math.round((respondedBookings.length / bookingRows.length) * 100));
+
+          const responseHours = respondedBookings
+            .map((booking: any) => {
+              const createdAt = new Date(booking.created_at || "").getTime();
+              const updatedAt = new Date(booking.updated_at || "").getTime();
+              if (!Number.isFinite(createdAt) || !Number.isFinite(updatedAt) || updatedAt <= createdAt) return null;
+              return (updatedAt - createdAt) / (1000 * 60 * 60);
+            })
+            .filter((value: number | null): value is number => value !== null);
+
+          if (responseHours.length > 0) {
+            const average = responseHours.reduce((sum, value) => sum + value, 0) / responseHours.length;
+            setAverageResponseHours(average);
+          } else {
+            setAverageResponseHours(null);
+          }
+        } else if (!bookingsError || bookingsMissing || !bookingRows?.length) {
+          setResponseRate(null);
+          setAverageResponseHours(null);
         }
 
         const followersResult = await supabase
@@ -179,6 +216,23 @@ export default function ClosetProfile() {
       .map((part) => part[0]?.toUpperCase())
       .join("") || "S";
   }, [displayName, username]);
+
+  const responseBadge = useMemo(() => {
+    if (responseRate === null || responseRate < 50) return null;
+    const tone = responseRate > 80
+      ? "border-green-200 bg-green-50 text-green-700"
+      : "border-amber-200 bg-amber-50 text-amber-700";
+    const averageLabel = averageResponseHours !== null
+      ? averageResponseHours < 1
+        ? " · avg <1h"
+        : ` · avg ${Math.round(averageResponseHours)}h`
+      : "";
+
+    return {
+      tone,
+      label: `Responds to ${responseRate}% of requests${averageLabel}`,
+    };
+  }, [averageResponseHours, responseRate]);
 
   if (loading) {
     return <div className="app-shell p-6">Loading closet...</div>;
@@ -319,6 +373,12 @@ export default function ClosetProfile() {
                 <Star size={15} className="fill-amber-500 text-amber-500" />
                 {averageRating} ({reviewCount} review{reviewCount === 1 ? "" : "s"})
               </button>
+            )}
+
+            {responseBadge && (
+              <div className={`mt-2 rounded-full border px-3 py-1 text-xs font-bold ${responseBadge.tone}`}>
+                {responseBadge.label}
+              </div>
             )}
 
             {userId && currentUserId !== userId && (
