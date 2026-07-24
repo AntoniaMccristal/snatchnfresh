@@ -27,8 +27,8 @@ const Terms = () => {
               <li>Lenders list items, set prices, and approve or decline booking requests.</li>
               <li>Renters browse listings, select dates, and submit booking requests.</li>
               <li>Once a Lender approves a request, the Renter completes payment via Stripe.</li>
-              <li>Snatch'n collects a 10% platform fee from each transaction to cover operating costs.</li>
-              <li>Lenders receive 90% of the rental fee, paid out to their connected bank account within 2–3 business days after the rental is completed and the item is returned.</li>
+              <li>Snatch'n collects a renter-paid protection fee of 7% of the rental subtotal plus $1.00 from each transaction to cover operating costs.</li>
+              <li>Lenders receive 100% of the rental fee, paid out to their connected bank account within 2–3 business days after the rental is completed and the item is returned.</li>
             </ul>
           </section>
 
@@ -66,7 +66,7 @@ const Terms = () => {
             <h2 className="text-base font-semibold mb-3">6. Payments & Fees</h2>
             <p>All payments are processed by Stripe. By making a payment you agree to Stripe's terms of service. Snatch'n does not store your card details — these are held securely by Stripe.</p>
             <ul className="list-disc pl-5 mt-3 space-y-2">
-              <li><strong>Platform fee:</strong> 10% of the rental subtotal, deducted from the Lender's payout.</li>
+              <li><strong>Protection fee:</strong> 7% of the rental subtotal plus $1.00, paid by the Renter at checkout.</li>
               <li><strong>Damage protection:</strong> An optional $5 add-on per booking that provides coverage for accidental damage up to $500.</li>
               <li><strong>Shipping:</strong> Where applicable, shipping costs are set by the Lender and paid by the Renter at checkout.</li>
               <li><strong>Currency:</strong> All prices are in Australian Dollars (AUD) unless otherwise stated.</li>

@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
+import { calculateFees, PROTECTION_FEE_PERCENT, roundCurrency } from "../src/lib/fees";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
-const COMMISSION_RATE = 0.05;
 
 function getAppOrigin(req: VercelRequest) {
   const explicitOrigin = req.headers.origin;
@@ -269,10 +269,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const rentalSubtotal = weeklyRateApplied
       ? (Math.floor(rentalDays / 7) * weeklyPrice) + ((rentalDays % 7) * pricePerDay)
       : rentalDays * pricePerDay;
-    const platformCommissionAmount = Math.round(rentalSubtotal * COMMISSION_RATE);
+    const feeBreakdown = calculateFees(rentalSubtotal);
+    const platformCommissionAmount = feeBreakdown.platformFee;
     const insuranceAmount = insuranceSelected ? 5 : 0;
-    const lenderPayoutAmount = rentalSubtotal - platformCommissionAmount + shippingAmount;
-    const totalPrice = rentalSubtotal + shippingAmount + insuranceAmount;
+    const lenderPayoutAmount = roundCurrency(feeBreakdown.lenderPayout + shippingAmount);
+    const totalPrice = roundCurrency(feeBreakdown.totalCharged + shippingAmount + insuranceAmount);
 
     const { data: ownerProfile } = await supabaseAdmin
       .from("profiles")
@@ -304,11 +305,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       delivery_method,
       local_handoff_type: delivery_method === "pickup" ? local_handoff_type || "pickup" : null,
       rental_subtotal: rentalSubtotal,
+      base_price: feeBreakdown.base,
+      protection_fee: feeBreakdown.protectionFee,
       shipping_amount: shippingAmount,
       insurance_amount: insuranceAmount,
       platform_commission_amount: platformCommissionAmount,
+      platform_fee: feeBreakdown.platformFee,
       lender_payout_amount: lenderPayoutAmount,
-      commission_rate: COMMISSION_RATE,
+      commission_rate: PROTECTION_FEE_PERCENT,
       stripe_transfer_destination: stripeDestination || null,
       payout_status: "held",
       payout_hold_reason: stripeDestination

@@ -16,6 +16,7 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { supabase } from "../lib/supabaseClient";
 import { usePageRefresh } from "@/hooks/usePageRefresh";
+import { calculateFees, roundCurrency } from "@/lib/fees";
 
 const stripePublishableKey = String(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "").trim();
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
@@ -352,15 +353,14 @@ const Booking = () => {
     return (fullWeeks * weeklyPrice) + (remainingDays * dailyPrice);
   }, [dailyPrice, dailyRentalFee, rentalDays, weeklyPrice, weeklyRateApplied]);
   const weeklySaving = Math.max(0, dailyRentalFee - rentalFee);
-  const COMMISSION_RATE = 0.05;
-  const platformCommission = Math.round(rentalFee * COMMISSION_RATE);
+  const feeBreakdown = useMemo(() => calculateFees(rentalFee), [rentalFee]);
   const standardShipping = Number(item?.standard_shipping_price || 0);
   const expressShipping = Number(item?.express_shipping_price || 0);
   const shippingFee = deliveryMethod === "standard_shipping" ? standardShipping
     : deliveryMethod === "express_shipping" ? expressShipping : 0;
   const insuranceFee = insurance ? 5 : 0;
-  const total = rentalFee + shippingFee + insuranceFee;
-  const lenderPayout = rentalFee - platformCommission + shippingFee;
+  const total = roundCurrency(feeBreakdown.totalCharged + shippingFee + insuranceFee);
+  const lenderPayout = roundCurrency(feeBreakdown.lenderPayout + shippingFee);
   const images: string[] = Array.isArray(item?.image_urls) && item.image_urls.length > 0
     ? item.image_urls
     : item?.image_url
@@ -651,10 +651,14 @@ const Booking = () => {
             </div>
 
             {/* Price breakdown */}
-            <div className="bg-card rounded-3xl p-5 space-y-2.5 border border-border/50 shadow-card">
+            <div className="bg-card rounded-3xl p-5 space-y-2 text-sm border border-border/50 shadow-card">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Rental ({rentalDays} days)</span>
-                <span className="text-foreground font-medium">${rentalFee}</span>
+                <span className="text-muted-foreground">
+                  {weeklyRateApplied
+                    ? `Rental subtotal (${rentalDays} days)`
+                    : `$${dailyPrice}/day x ${rentalDays} days`}
+                </span>
+                <span className="text-foreground font-medium">${feeBreakdown.base.toFixed(2)}</span>
               </div>
               {weeklyRateApplied && weeklySaving > 0 && (
                 <div className="rounded-xl bg-primary/5 px-3 py-2 text-xs font-semibold text-primary">
@@ -662,28 +666,31 @@ const Booking = () => {
                 </div>
               )}
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Platform fee (5%)</span>
-                <span className="text-foreground font-medium">${platformCommission}</span>
+                <span className="text-muted-foreground flex items-center gap-1">
+                  Renter protection fee
+                  <span title="Covers you against cancellations and item issues" className="text-xs text-primary cursor-help">ⓘ</span>
+                </span>
+                <span className="text-foreground font-medium">${feeBreakdown.protectionFee.toFixed(2)}</span>
               </div>
               {shippingFee > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Shipping</span>
-                  <span className="text-foreground font-medium">${shippingFee}</span>
+                  <span className="text-foreground font-medium">${shippingFee.toFixed(2)}</span>
                 </div>
               )}
               {insurance && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Damage protection</span>
-                  <span className="text-foreground font-medium">${insuranceFee}</span>
+                  <span className="text-foreground font-medium">${insuranceFee.toFixed(2)}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Lender receives</span>
-                <span className="text-foreground font-medium">${lenderPayout}</span>
+                <span className="text-foreground font-medium">${lenderPayout.toFixed(2)}</span>
               </div>
-              <div className="border-t border-border/50 pt-2.5 flex justify-between text-base font-bold">
+              <div className="border-t border-border/50 pt-2 mt-2 flex justify-between text-base font-bold">
                 <span className="text-foreground">Total</span>
-                <span className="text-primary">${total}</span>
+                <span className="text-primary">${total.toFixed(2)}</span>
               </div>
             </div>
 

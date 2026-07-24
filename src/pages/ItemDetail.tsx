@@ -566,6 +566,9 @@ const ItemDetail = () => {
               <p className="text-sm text-muted-foreground">
                 ${item.price_per_day}/day{Number(item.weekly_price) > 0 ? ` · $${item.weekly_price}/week` : ""}
               </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                + 7% renter protection fee at checkout
+              </p>
               {item.brand && <p className="text-xs text-muted-foreground mt-1">{item.brand}</p>}
               {item.size && <p className="text-xs text-muted-foreground mt-1">Size {item.size}</p>}
               {ownerId && (

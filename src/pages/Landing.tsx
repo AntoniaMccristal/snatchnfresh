@@ -13,7 +13,7 @@ const HOW_STEPS = [
 
 const FOR_BUSINESS = [
   { icon: "", title: "List your inventory", desc: "Upload your pieces in minutes. No tech skills needed." },
-  { icon: "", title: "Keep 90% of every rental", desc: "We take 10%. You keep the rest, paid directly to your bank." },
+  { icon: "", title: "Keep 100% of every rental", desc: "Renters pay a protection fee. Your rental payout goes directly to your bank." },
   { icon: "", title: "Payments held until return", desc: "Money is held securely until the item is confirmed back safe." },
   { icon: "", title: "Manage everything in-app", desc: "Approve bookings, message renters, track returns — all in one place." },
 ];
@@ -144,10 +144,10 @@ export default function Landing() {
       {/* ── Stats strip ── */}
       <section style={{ background: "#1a0a2e", padding: "32px 24px", display: "flex", gap: 0, justifyContent: "center", flexWrap: "wrap" }}>
         {[
-          { num: "90%", label: "goes to the lender" },
+          { num: "100%", label: "goes to the lender" },
+          { num: "7%", label: "renter protection fee" },
           { num: "$0", label: "to list an item" },
           { num: "100%", label: "secure payments" },
-          { num: "", label: "sustainable fashion" },
         ].map((s, i) => (
           <div key={i} style={{ flex: "1 1 160px", textAlign: "center", padding: "12px 24px", borderRight: i < 3 ? "0.5px solid rgba(255,255,255,0.1)" : "none" }}>
             <p style={{ fontSize: 28, fontWeight: 800, color: "#f4c5d0", margin: "0 0 4px", letterSpacing: "-1px" }}>{s.num}</p>

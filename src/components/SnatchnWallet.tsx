@@ -267,7 +267,7 @@ export default function SnatchnWallet({ userId, stripeConnected, onConnectStripe
                     }`}>
                       {formatAUD(booking.lender_payout_amount)}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">after fees</p>
+                    <p className="text-[10px] text-muted-foreground">your earnings</p>
                   </div>
                 </button>
               );

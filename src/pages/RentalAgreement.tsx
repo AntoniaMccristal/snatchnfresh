@@ -74,7 +74,7 @@ const RentalAgreement = () => {
             <h2 className="text-base font-semibold mb-3">6. Cancellation</h2>
             <ul className="list-disc pl-5 space-y-2">
               <li><strong>Renter cancellation more than 48 hours before pickup:</strong> Full refund.</li>
-              <li><strong>Renter cancellation within 48 hours of pickup:</strong> No refund. The Lender retains 90% of the rental fee and Snatch'n retains the platform fee.</li>
+              <li><strong>Renter cancellation within 48 hours of pickup:</strong> No refund. The Lender retains 100% of the rental fee and Snatch'n retains the protection fee.</li>
               <li><strong>Lender cancellation:</strong> Full refund to the Renter. The Lender's account may be flagged for repeated cancellations.</li>
               <li><strong>Item not as described:</strong> If reported within 24 hours of pickup, Snatch'n may issue a full or partial refund at our discretion.</li>
             </ul>
