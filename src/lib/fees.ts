@@ -1,18 +1,9 @@
 export const PROTECTION_FEE_PERCENT = 0.07;
 export const PROTECTION_FEE_FLAT = 1.00;
 
-export function roundCurrency(value: number) {
-  return Math.round(value * 100) / 100;
-}
-
 export function calculateFees(basePriceAUD: number) {
-  const base = roundCurrency(basePriceAUD);
-  const percentFee = roundCurrency(base * PROTECTION_FEE_PERCENT);
-  const flatFee = PROTECTION_FEE_FLAT;
-  const protectionFee = roundCurrency(percentFee + flatFee);
-  const totalCharged = roundCurrency(base + protectionFee);
-  const lenderPayout = base;
-  const platformFee = protectionFee;
-
-  return { base, protectionFee, totalCharged, lenderPayout, platformFee };
+  const base = Math.round(basePriceAUD * 100) / 100;
+  const protectionFee = Math.round((base * PROTECTION_FEE_PERCENT + PROTECTION_FEE_FLAT) * 100) / 100;
+  const totalCharged = Math.round((base + protectionFee) * 100) / 100;
+  return { base, protectionFee, totalCharged, lenderPayout: base, platformFee: protectionFee };
 }

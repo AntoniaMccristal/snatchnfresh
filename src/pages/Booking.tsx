@@ -16,10 +16,14 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { supabase } from "../lib/supabaseClient";
 import { usePageRefresh } from "@/hooks/usePageRefresh";
-import { calculateFees, roundCurrency } from "@/lib/fees";
+import { calculateFees } from "@/lib/fees";
 
 const stripePublishableKey = String(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "").trim();
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
+
+function roundCurrency(value: number) {
+  return Math.round(value * 100) / 100;
+}
 
 function parseDate(value: string) {
   if (!value) return null;

@@ -1,9 +1,21 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
-import { calculateFees, PROTECTION_FEE_PERCENT, roundCurrency } from "../src/lib/fees";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
+const PROTECTION_FEE_PERCENT = 0.07;
+const PROTECTION_FEE_FLAT = 1.00;
+
+function roundCurrency(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+function calculateFees(basePriceAUD: number) {
+  const base = Math.round(basePriceAUD * 100) / 100;
+  const protectionFee = Math.round((base * PROTECTION_FEE_PERCENT + PROTECTION_FEE_FLAT) * 100) / 100;
+  const totalCharged = Math.round((base + protectionFee) * 100) / 100;
+  return { base, protectionFee, totalCharged, lenderPayout: base, platformFee: protectionFee };
+}
 
 function getAppOrigin(req: VercelRequest) {
   const explicitOrigin = req.headers.origin;
