@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient";
+import { compressImage } from "./images";
 
 const CANDIDATE_BUCKETS = ["avatars", "items"];
 
@@ -8,7 +9,8 @@ function isBucketMissingError(error: any) {
 }
 
 export async function uploadAvatar(userId: string, file: File) {
-  const extension = file.name.split(".").pop() || "jpg";
+  const compressedFile = await compressImage(file);
+  const extension = compressedFile.name.split(".").pop() || "jpg";
   const fileName = `${Date.now()}.${extension}`;
   let lastError: any = null;
 
@@ -16,7 +18,7 @@ export async function uploadAvatar(userId: string, file: File) {
     const path = bucket === "items" ? `avatars/${userId}/${fileName}` : `${userId}/${fileName}`;
     const { error: uploadError } = await supabase.storage
       .from(bucket)
-      .upload(path, file, { upsert: true });
+      .upload(path, compressedFile, { upsert: true });
 
     if (uploadError) {
       lastError = uploadError;
@@ -30,4 +32,3 @@ export async function uploadAvatar(userId: string, file: File) {
 
   throw lastError || new Error("Avatar upload failed.");
 }
-

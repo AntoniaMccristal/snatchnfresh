@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabaseClient";
 import { toast } from "@/hooks/use-toast";
 import {
   buildStorageFilePath,
+  compressImage,
   getItemImageUrl,
   isPersistableItemImageUrl,
   prepareImageForUpload,
@@ -678,9 +679,10 @@ const ListItem = () => {
           entry.id === image.id ? { ...entry, uploading: true } : entry
         )));
 
-        const filePath = buildStorageFilePath(user.id, image.file);
+        const compressedFile = await compressImage(image.file);
+        const filePath = buildStorageFilePath(user.id, compressedFile);
         const { error: uploadError } = await withTimeout(
-          supabase.storage.from("items").upload(filePath, image.file, {
+          supabase.storage.from("items").upload(filePath, compressedFile, {
             upsert: false,
             cacheControl: "3600",
           }),
