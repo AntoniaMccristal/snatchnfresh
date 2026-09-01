@@ -327,6 +327,8 @@ export default function ClosetProfile() {
               <img
                 src={avatarUrl}
                 alt={displayName || username || "Profile"}
+                loading="lazy"
+                decoding="async"
                 className="w-20 h-20 md:w-28 md:h-28 rounded-full object-cover"
               />
             ) : (
@@ -444,6 +446,8 @@ export default function ClosetProfile() {
               <img
                 src={getItemImageUrl(item.image_url, item.id, item.updated_at || item.created_at)}
                 alt={item.title}
+                loading="lazy"
+                decoding="async"
                 style={{ width: "100%", height: "auto", display: "block", borderRadius: "12px" }}
               />
               <p className="mt-2 text-sm font-semibold text-foreground truncate">{item.title}</p>

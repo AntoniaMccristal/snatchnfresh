@@ -605,6 +605,8 @@ const Home = () => {
                             <img
                               src={getItemImageUrl(notification.itemImageUrl, notification.itemId)}
                               alt={notification.itemTitle || "Listing"}
+                              loading="lazy"
+                              decoding="async"
                               className="w-11 h-11 rounded-lg object-cover border border-border/40"
                             />
                           ) : (
@@ -618,6 +620,8 @@ const Home = () => {
                               <img
                                 src={notification.renterAvatarUrl}
                                 alt={notification.renterName || "Renter"}
+                                loading="lazy"
+                                decoding="async"
                                 className="w-8 h-8 rounded-full object-cover border border-border/40"
                               />
                             ) : (

@@ -192,6 +192,8 @@ const ItemCard = ({ item, variant = "grid", initialLiked, currentUserId, onLikeC
         <img
           src={imageSrc}
           alt={item.title || "Item"}
+          loading="lazy"
+          decoding="async"
           className="block w-full h-auto object-cover transition-transform duration-500 group-hover:scale-105"
           onError={() => setImageFailed(true)}
         />
