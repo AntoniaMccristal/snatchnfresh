@@ -193,50 +193,58 @@ export default function Profile() {
       setMyWardrobe(wardrobeItems);
 
       const wardrobeItemIds = wardrobeItems.map((item) => item.id);
-      if (wardrobeItemIds.length > 0) {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData.session?.access_token;
-        const [ownerRequestsResponse, ownerRowsResult] = await Promise.all([
-          token
-            ? fetch("/api/owner-booking-requests", { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json().catch(() => ({ requests: [] })))
-            : Promise.resolve({ requests: [] as any[] }),
-          supabase.from("bookings").select("*").in("item_id", wardrobeItemIds).in("status", ["approved", "paid", "completed"]).order("created_at", { ascending: false }),
-        ]);
-        if (loadRequestIdRef.current !== requestId) return;
-        setIncomingRequests(Array.isArray(ownerRequestsResponse?.requests) ? ownerRequestsResponse.requests : []);
-        const activeOwnerRows = ownerRowsResult.data || [];
-        setOwnerBookings(activeOwnerRows);
-        const trackingState: Record<string, string> = {};
-        activeOwnerRows.forEach((row) => { trackingState[row.id] = row.tracking_number || ""; });
-        setTrackingDrafts(trackingState);
-      } else {
-        setIncomingRequests([]);
-        setOwnerBookings([]);
-        setTrackingDrafts({});
-      }
-
       const snatches = renterBookingsResult.data || [];
-      if (snatches.length > 0) {
-        const snatchItemIds = Array.from(new Set(snatches.map((b) => b.item_id)));
-        const { data: snatchItems } = await supabase.from("items").select("*").in("id", snatchItemIds);
-        const itemById = new Map((snatchItems || []).map((item) => [item.id, item]));
-        setMySnatches(snatches.map((b) => ({ ...b, item: itemById.get(b.item_id) })));
-      } else {
-        setMySnatches([]);
-      }
-
       const likeRows = likesResult.data;
       const likesError = likesResult.error;
+      let likedIds: string[] = [];
       if (likesError) {
         const missingLikesTable = likesError.code === "42P01" || String(likesError.message || "").toLowerCase().includes("relation") || String(likesError.message || "").toLowerCase().includes("schema cache");
         if (missingLikesTable) { setLikesEnabled(false); setLikedItems([]); } else throw likesError;
       } else {
         setLikesEnabled(true);
-        const likedIds = (likeRows || []).map((row) => row.item_id).filter(Boolean);
-        if (likedIds.length > 0) {
-          const { data: liked } = await supabase.from("items").select("*").in("id", likedIds).order("created_at", { ascending: false });
-          setLikedItems(liked || []);
-        } else { setLikedItems([]); }
+        likedIds = (likeRows || []).map((row) => row.item_id).filter(Boolean);
+      }
+
+      const snatchItemIds = Array.from(new Set(snatches.map((b) => b.item_id).filter(Boolean)));
+      const [ownerData, snatchItemsResult, likedItemsResult] = await Promise.all([
+        wardrobeItemIds.length > 0
+          ? Promise.all([
+              supabase.auth.getSession(),
+              supabase.from("bookings").select("*").in("item_id", wardrobeItemIds).in("status", ["approved", "paid", "completed"]).order("created_at", { ascending: false }),
+            ]).then(async ([sessionResult, ownerRowsResult]) => {
+              const token = sessionResult.data.session?.access_token;
+              const ownerRequestsResponse = token
+                ? await fetch("/api/owner-booking-requests", { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json().catch(() => ({ requests: [] })))
+                : { requests: [] as any[] };
+              return { ownerRequestsResponse, ownerRowsResult };
+            })
+          : Promise.resolve({ ownerRequestsResponse: { requests: [] as any[] }, ownerRowsResult: { data: [] as any[] } }),
+        snatchItemIds.length > 0
+          ? supabase.from("items").select("*").in("id", snatchItemIds)
+          : Promise.resolve({ data: [] as any[] }),
+        likedIds.length > 0
+          ? supabase.from("items").select("*").in("id", likedIds).order("created_at", { ascending: false })
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+
+      if (loadRequestIdRef.current !== requestId) return;
+
+      setIncomingRequests(Array.isArray(ownerData.ownerRequestsResponse?.requests) ? ownerData.ownerRequestsResponse.requests : []);
+      const activeOwnerRows = ownerData.ownerRowsResult.data || [];
+      setOwnerBookings(activeOwnerRows);
+      const trackingState: Record<string, string> = {};
+      activeOwnerRows.forEach((row) => { trackingState[row.id] = row.tracking_number || ""; });
+      setTrackingDrafts(trackingState);
+
+      if (snatches.length > 0) {
+        const itemById = new Map((snatchItemsResult.data || []).map((item) => [item.id, item]));
+        setMySnatches(snatches.map((b) => ({ ...b, item: itemById.get(b.item_id) })));
+      } else {
+        setMySnatches([]);
+      }
+
+      if (!likesError) {
+        setLikedItems(likedItemsResult.data || []);
       }
 
       const ratingsReceived = ratingsReceivedResult.data;

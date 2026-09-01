@@ -74,16 +74,18 @@ const Home = () => {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const loadHomeFeed = useCallback(async () => {
-    const { data, error } = await supabase.from("items").select("*").order("created_at", { ascending: false });
-    let fetchedItems = data || [];
+    const [itemsResult, userResult] = await Promise.all([
+      supabase.from("items").select("*").order("created_at", { ascending: false }),
+      supabase.auth.getUser(),
+    ]);
+    let fetchedItems = itemsResult.data || [];
 
-    if (error) {
-      console.error("Error fetching items:", error);
+    if (itemsResult.error) {
+      console.error("Error fetching items:", itemsResult.error);
       fetchedItems = [];
     }
 
-    const { data: userData } = await supabase.auth.getUser();
-    const user = userData?.user;
+    const user = userResult.data?.user;
     setCurrentUserId(user?.id || null);
     if (!user) {
       setItems(fetchedItems);
@@ -92,10 +94,19 @@ const Home = () => {
       return;
     }
 
-    const { data: blockedByData, error: blockedByError } = await supabase
-      .from("blocks")
-      .select("blocker_id")
-      .eq("blocked_id", user.id);
+    const [blockedByResult, likesResult] = await Promise.all([
+      supabase
+        .from("blocks")
+        .select("blocker_id")
+        .eq("blocked_id", user.id),
+      supabase
+        .from("likes")
+        .select("item_id")
+        .eq("user_id", user.id),
+    ]);
+
+    const blockedByData = blockedByResult.data;
+    const blockedByError = blockedByResult.error;
 
     const blocksMissing =
       blockedByError?.code === "42P01" ||
@@ -113,18 +124,13 @@ const Home = () => {
     }
     setItems(fetchedItems);
 
-    const { data: likeRows, error: likesError } = await supabase
-      .from("likes")
-      .select("item_id")
-      .eq("user_id", user.id);
-
-    if (likesError) {
+    if (likesResult.error) {
       setLikedItems([]);
       setLikedItemIds(new Set());
       return;
     }
 
-    const likedIds = (likeRows || []).map((row) => row.item_id).filter(Boolean);
+    const likedIds = (likesResult.data || []).map((row) => row.item_id).filter(Boolean);
     const likedSet = new Set(likedIds);
     setLikedItemIds(likedSet);
     if (likedIds.length === 0) {
@@ -143,10 +149,16 @@ const Home = () => {
   usePageRefresh(loadHomeFeed, [loadHomeFeed]);
 
   const loadOwnerItemsForUser = useCallback(async (userId: string) => {
-    const byOwner = await supabase
-      .from("items")
-      .select("id,title,image_url,updated_at,created_at")
-      .eq("owner_id", userId);
+    const [byOwner, byUser] = await Promise.all([
+      supabase
+        .from("items")
+        .select("id,title,image_url,updated_at,created_at")
+        .eq("owner_id", userId),
+      supabase
+        .from("items")
+        .select("id,title,image_url,updated_at,created_at")
+        .eq("user_id", userId),
+    ]);
 
     const ownerMissing =
       byOwner.error?.code === "42703" ||
@@ -155,11 +167,6 @@ const Home = () => {
     if (byOwner.error && !ownerMissing) {
       throw byOwner.error;
     }
-
-    const byUser = await supabase
-      .from("items")
-      .select("id,title,image_url,updated_at,created_at")
-      .eq("user_id", userId);
 
     const userMissing =
       byUser.error?.code === "42703" ||
