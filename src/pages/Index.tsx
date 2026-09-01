@@ -57,6 +57,33 @@ type NotificationEntry = {
   sortTs?: number;
 };
 
+const SKELETON_CARD_HEIGHTS = [260, 320, 230, 285, 340, 250, 300, 270];
+
+function SkeletonCardGrid({ desktopColumns = 4 }: { desktopColumns?: number }) {
+  return (
+    <>
+      <div className="md:hidden" style={{ columns: 2, columnGap: "8px" }}>
+        {SKELETON_CARD_HEIGHTS.map((height, index) => (
+          <div key={index} style={{ breakInside: "avoid", marginBottom: "8px" }}>
+            <div className="rounded-2xl bg-muted animate-pulse" style={{ height }} />
+            <div className="h-3 bg-muted animate-pulse rounded mt-2 w-3/4" />
+            <div className="h-3 bg-muted animate-pulse rounded mt-1 w-1/2" />
+          </div>
+        ))}
+      </div>
+      <div className="hidden md:block" style={{ columns: desktopColumns, columnGap: "12px" }}>
+        {SKELETON_CARD_HEIGHTS.map((height, index) => (
+          <div key={index} style={{ breakInside: "avoid", marginBottom: "12px" }}>
+            <div className="rounded-2xl bg-muted animate-pulse" style={{ height }} />
+            <div className="h-3 bg-muted animate-pulse rounded mt-2 w-3/4" />
+            <div className="h-3 bg-muted animate-pulse rounded mt-1 w-1/2" />
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 const Home = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -70,76 +97,82 @@ const Home = () => {
   const [bagCount, setBagCount] = useState(0);
   const [likedItems, setLikedItems] = useState<any[]>([]);
   const [likedItemIds, setLikedItemIds] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const loadHomeFeed = useCallback(async () => {
-    const [itemsResult, userResult] = await Promise.all([
-      supabase.from("items").select("*").order("created_at", { ascending: false }),
-      supabase.auth.getUser(),
-    ]);
-    let fetchedItems = itemsResult.data || [];
+    setLoading(true);
+    try {
+      const [itemsResult, userResult] = await Promise.all([
+        supabase.from("items").select("*").order("created_at", { ascending: false }),
+        supabase.auth.getUser(),
+      ]);
+      let fetchedItems = itemsResult.data || [];
 
-    if (itemsResult.error) {
-      console.error("Error fetching items:", itemsResult.error);
-      fetchedItems = [];
-    }
+      if (itemsResult.error) {
+        console.error("Error fetching items:", itemsResult.error);
+        fetchedItems = [];
+      }
 
-    const user = userResult.data?.user;
-    setCurrentUserId(user?.id || null);
-    if (!user) {
+      const user = userResult.data?.user;
+      setCurrentUserId(user?.id || null);
+      if (!user) {
+        setItems(fetchedItems);
+        setLikedItems([]);
+        setLikedItemIds(new Set());
+        return;
+      }
+
+      const [blockedByResult, likesResult] = await Promise.all([
+        supabase
+          .from("blocks")
+          .select("blocker_id")
+          .eq("blocked_id", user.id),
+        supabase
+          .from("likes")
+          .select("item_id")
+          .eq("user_id", user.id),
+      ]);
+
+      const blockedByData = blockedByResult.data;
+      const blockedByError = blockedByResult.error;
+
+      const blocksMissing =
+        blockedByError?.code === "42P01" ||
+        String(blockedByError?.message || "").toLowerCase().includes("relation");
+
+      if (blockedByError && !blocksMissing) {
+        console.error("Error fetching blocked users:", blockedByError);
+      }
+
+      if (!blockedByError) {
+        const blockedByIds = new Set((blockedByData || []).map((row) => row.blocker_id));
+        fetchedItems = fetchedItems.filter((item) =>
+          !blockedByIds.has(item.owner_id) && !blockedByIds.has(item.user_id),
+        );
+      }
       setItems(fetchedItems);
-      setLikedItems([]);
-      setLikedItemIds(new Set());
-      return;
+
+      if (likesResult.error) {
+        setLikedItems([]);
+        setLikedItemIds(new Set());
+        return;
+      }
+
+      const likedIds = (likesResult.data || []).map((row) => row.item_id).filter(Boolean);
+      const likedSet = new Set(likedIds);
+      setLikedItemIds(likedSet);
+      if (likedIds.length === 0) {
+        setLikedItems([]);
+        return;
+      }
+
+      const { data: liked } = await supabase.from("items").select("*").in("id", likedIds);
+      setLikedItems(liked || []);
+    } finally {
+      setLoading(false);
     }
-
-    const [blockedByResult, likesResult] = await Promise.all([
-      supabase
-        .from("blocks")
-        .select("blocker_id")
-        .eq("blocked_id", user.id),
-      supabase
-        .from("likes")
-        .select("item_id")
-        .eq("user_id", user.id),
-    ]);
-
-    const blockedByData = blockedByResult.data;
-    const blockedByError = blockedByResult.error;
-
-    const blocksMissing =
-      blockedByError?.code === "42P01" ||
-      String(blockedByError?.message || "").toLowerCase().includes("relation");
-
-    if (blockedByError && !blocksMissing) {
-      console.error("Error fetching blocked users:", blockedByError);
-    }
-
-    if (!blockedByError) {
-      const blockedByIds = new Set((blockedByData || []).map((row) => row.blocker_id));
-      fetchedItems = fetchedItems.filter((item) =>
-        !blockedByIds.has(item.owner_id) && !blockedByIds.has(item.user_id),
-      );
-    }
-    setItems(fetchedItems);
-
-    if (likesResult.error) {
-      setLikedItems([]);
-      setLikedItemIds(new Set());
-      return;
-    }
-
-    const likedIds = (likesResult.data || []).map((row) => row.item_id).filter(Boolean);
-    const likedSet = new Set(likedIds);
-    setLikedItemIds(likedSet);
-    if (likedIds.length === 0) {
-      setLikedItems([]);
-      return;
-    }
-
-    const { data: liked } = await supabase.from("items").select("*").in("id", likedIds);
-    setLikedItems(liked || []);
   }, []);
 
   useEffect(() => {
@@ -709,54 +742,62 @@ const Home = () => {
             <span className="font-semibold text-foreground">{filteredItems.length}</span> items near you
           </p>
         </div>
-        <div className="md:hidden" style={{ columns: "2", columnGap: "8px" }}>
-          {filteredItems.map((item) => (
-            <div key={item.id} style={{ breakInside: "avoid", marginBottom: "8px" }}>
-              <ItemCard
-                item={item}
-                initialLiked={likedItemIds.has(item.id)}
-                currentUserId={currentUserId}
-                onLikeChange={handleItemLikeChange}
-              />
+        {loading ? (
+          <SkeletonCardGrid />
+        ) : (
+          <>
+            <div className="md:hidden" style={{ columns: "2", columnGap: "8px" }}>
+              {filteredItems.map((item) => (
+                <div key={item.id} style={{ breakInside: "avoid", marginBottom: "8px" }}>
+                  <ItemCard
+                    item={item}
+                    initialLiked={likedItemIds.has(item.id)}
+                    currentUserId={currentUserId}
+                    onLikeChange={handleItemLikeChange}
+                  />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <div className="hidden md:block" style={{ columns: "4", columnGap: "12px" }}>
-          {filteredItems.map((item) => (
-            <div key={item.id} style={{ breakInside: "avoid", marginBottom: "12px" }}>
-              <ItemCard
-                item={item}
-                initialLiked={likedItemIds.has(item.id)}
-                currentUserId={currentUserId}
-                onLikeChange={handleItemLikeChange}
-              />
+            <div className="hidden md:block" style={{ columns: "4", columnGap: "12px" }}>
+              {filteredItems.map((item) => (
+                <div key={item.id} style={{ breakInside: "avoid", marginBottom: "12px" }}>
+                  <ItemCard
+                    item={item}
+                    initialLiked={likedItemIds.has(item.id)}
+                    currentUserId={currentUserId}
+                    onLikeChange={handleItemLikeChange}
+                  />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </>
+        )}
       </div>
 
-      <div className="mx-auto w-full max-w-7xl px-5 mb-8">
-        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
-          <h3 className="font-display text-base font-semibold text-foreground mb-2 inline-flex items-center gap-1.5">
-            <Sparkles size={15} className="text-primary" />
-            AI Picks For You
-          </h3>
-          <p className="text-xs text-muted-foreground mb-3">
-            Based on your likes, these listings match your style and typical price range.
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-            {aiPicks.map((item) => (
-              <ItemCard
-                key={`ai-${item.id}`}
-                item={item}
-                initialLiked={likedItemIds.has(item.id)}
-                currentUserId={currentUserId}
-                onLikeChange={handleItemLikeChange}
-              />
-            ))}
+      {!loading && (
+        <div className="mx-auto w-full max-w-7xl px-5 mb-8">
+          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+            <h3 className="font-display text-base font-semibold text-foreground mb-2 inline-flex items-center gap-1.5">
+              <Sparkles size={15} className="text-primary" />
+              AI Picks For You
+            </h3>
+            <p className="text-xs text-muted-foreground mb-3">
+              Based on your likes, these listings match your style and typical price range.
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+              {aiPicks.map((item) => (
+                <ItemCard
+                  key={`ai-${item.id}`}
+                  item={item}
+                  initialLiked={likedItemIds.has(item.id)}
+                  currentUserId={currentUserId}
+                  onLikeChange={handleItemLikeChange}
+                />
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

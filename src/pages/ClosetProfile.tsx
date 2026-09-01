@@ -4,6 +4,25 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { getItemImageUrl } from "@/lib/images";
 
+const SKELETON_CARD_HEIGHTS = [260, 320, 230, 285, 340, 250, 300, 270];
+
+function ClosetSkeletonGrid() {
+  return (
+    <div
+      className="[column-count:2] md:[column-count:3] lg:[column-count:4] xl:[column-count:5]"
+      style={{ columnGap: "12px" }}
+    >
+      {SKELETON_CARD_HEIGHTS.map((height, index) => (
+        <div key={index} style={{ breakInside: "avoid", marginBottom: "12px" }}>
+          <div className="rounded-2xl bg-muted animate-pulse" style={{ height }} />
+          <div className="h-3 bg-muted animate-pulse rounded mt-2 w-3/4" />
+          <div className="h-3 bg-muted animate-pulse rounded mt-1 w-1/2" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function ClosetProfile() {
   const { userId } = useParams();
   const navigate = useNavigate();
@@ -235,7 +254,25 @@ export default function ClosetProfile() {
   }, [averageResponseHours, responseRate]);
 
   if (loading) {
-    return <div className="app-shell p-6">Loading closet...</div>;
+    return (
+      <div className="app-shell bg-white pb-24 page-transition">
+        <header className="md:sticky md:top-0 md:z-20 bg-white/95 md:backdrop-blur">
+          <div className="mx-auto max-w-6xl px-4 md:px-8 lg:px-12 pt-8 pb-4 relative">
+            <div className="absolute left-4 top-8 w-9 h-9 rounded-full bg-muted animate-pulse" />
+            <div className="flex flex-col items-center text-center">
+              <div className="w-20 h-20 md:w-28 md:h-28 rounded-full bg-muted animate-pulse" />
+              <div className="h-5 bg-muted animate-pulse rounded mt-4 w-40" />
+              <div className="h-3 bg-muted animate-pulse rounded mt-2 w-24" />
+              <div className="h-3 bg-muted animate-pulse rounded mt-3 w-56" />
+            </div>
+          </div>
+        </header>
+
+        <div className="mx-auto w-full max-w-7xl px-4 md:px-8 lg:px-12">
+          <ClosetSkeletonGrid />
+        </div>
+      </div>
+    );
   }
 
   async function toggleFollow() {
